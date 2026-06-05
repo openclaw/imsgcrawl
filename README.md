@@ -26,8 +26,8 @@ readability and row counts without leaking handles. `contacts export` prints:
 {
   "contacts": [
     {
-      "display_name": "+15550100",
-      "phone_numbers": ["+15550100"]
+      "display_name": "0118 999 881 999 119 725 3",
+      "phone_numbers": ["0118 999 881 999 119 725 3"]
     }
   ]
 }

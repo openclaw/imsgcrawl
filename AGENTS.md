@@ -15,7 +15,8 @@ can pull.
 
 Do not add Gmail, Telegram, WhatsApp, Apple Contacts import, source cards,
 clustering, canonical people, identity merge logic, or life-orientation logic
-here. Those belong in the relevant source crawler, clawdex, or Lifecrawler.
+here. Those belong in the relevant source crawler, clawdex, or a higher-level
+private aggregation layer.
 
 Product code is Go. Keep source-specific SQLite parsing in this repo. Use
 `github.com/openclaw/crawlkit` only for provider-neutral mechanics such as
@@ -28,9 +29,15 @@ Messages data is private. Never commit or publish raw conversation contents,
 names, phone numbers, emails, photos, attachments, account IDs, or local paths
 that identify the user or other people unless the user explicitly consents.
 
-When the user asks in chat for raw local command output, show the raw local
-interface output there. Public PRs, docs, tests, and fixtures must use fake data,
-counts, schemas, or redacted examples.
+When the user asks in chat for raw local command output, show the raw,
+unredacted local interface output in chat exactly as produced. Do not use
+`sed`, `awk`, `grep`, redaction filters, LLM summarization, or hand-edited
+snippets to satisfy a raw-output request. The point is for the user to see the
+full input/output context naturally. This raw/unredacted output is local-chat
+only and must never leave the machine for GitHub, PRs, docs, tests, fixtures,
+public comments, or any other external surface without explicit user consent.
+Public PRs, docs, tests, and fixtures must use fake data, counts, schemas, or
+redacted examples.
 
 ## CLI Shape
 

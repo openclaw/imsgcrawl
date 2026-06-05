@@ -20,7 +20,7 @@ After Slice 2, `imsgcrawl` should be more than a contact producer. It should mai
 
 and get useful source-native iMessage results from a local archive while preserving privacy and avoiding canonical people logic.
 
-This matters because contact export only solves the clawdex identity-entrypoint problem. A proper crawler should also make iMessage history usable as source evidence for future Lifecrawler work, just as telecrawl and wacrawl own Telegram and WhatsApp source archives.
+This matters because contact export only solves the clawdex identity-entrypoint problem. A proper crawler should also make iMessage history usable as source evidence for future private source-review work, just as telecrawl and wacrawl own Telegram and WhatsApp source archives.
 
 ## Progress
 
