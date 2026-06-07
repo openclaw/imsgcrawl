@@ -48,9 +48,16 @@ type runtime struct {
 
 func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	jsonOut, args := pullJSONFlag(args)
-	if len(args) == 0 || args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		printUsage(stdout)
 		return nil
+	}
+	if args[0] == "help" {
+		if len(args) == 1 {
+			printUsage(stdout)
+			return nil
+		}
+		return printCommandUsage(stdout, args[1:])
 	}
 	global := flag.NewFlagSet("imsgcrawl", flag.ContinueOnError)
 	global.SetOutput(io.Discard)
@@ -66,6 +73,9 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	rest := global.Args()
 	if len(rest) == 0 || rest[0] == "help" || rest[0] == "--help" || rest[0] == "-h" {
+		if len(rest) > 1 && rest[0] == "help" {
+			return printCommandUsage(stdout, rest[1:])
+		}
 		printUsage(stdout)
 		return nil
 	}
@@ -100,10 +110,19 @@ func flagPassed(fs *flag.FlagSet, name string) bool {
 	return passed
 }
 
+func hasHelpFlag(args []string) bool {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" || arg == "-help" {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *runtime) dispatch(args []string) error {
 	switch args[0] {
 	case "metadata":
-		return r.print(controlManifest())
+		return r.runMetadata(args[1:])
 	case "sync":
 		return r.runSync(args[1:])
 	case "status":
@@ -122,6 +141,9 @@ func (r *runtime) dispatch(args []string) error {
 }
 
 func (r *runtime) runContacts(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"contacts"})
+	}
 	if len(args) == 0 {
 		return usageErr(errors.New("usage: imsgcrawl contacts export"))
 	}
@@ -138,6 +160,9 @@ type contactExport struct {
 }
 
 func (r *runtime) runContactsExport(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"contacts", "export"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl contacts export", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
@@ -151,6 +176,16 @@ func (r *runtime) runContactsExport(args []string) error {
 		return err
 	}
 	return r.print(contactExport{Contacts: contacts})
+}
+
+func (r *runtime) runMetadata(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"metadata"})
+	}
+	if len(args) != 0 {
+		return usageErr(errors.New("metadata takes no arguments"))
+	}
+	return r.print(controlManifest())
 }
 
 func (r *runtime) print(v any) error {
@@ -206,8 +241,84 @@ Usage:
   imsgcrawl [--json] [--archive PATH] messages --chat ID [--limit N|--all] [--asc]
   imsgcrawl [--json] [--archive PATH] search [--limit N|--all] QUERY
   imsgcrawl [--json] [--db PATH] contacts export
+  imsgcrawl help COMMAND
   imsgcrawl --version
+
+Global flags:
+  --json       Print JSON output where supported.
+  --db PATH    Messages source database path.
+  --archive PATH
+              Local imsgcrawl archive path.
+
+Help:
+  imsgcrawl help chats
+  imsgcrawl chats --help
 `)
+}
+
+func printCommandUsage(w io.Writer, args []string) error {
+	topic := strings.Join(args, " ")
+	switch topic {
+	case "metadata":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--db PATH] metadata
+
+Print crawlkit control metadata.
+`)
+	case "sync":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--db PATH] [--archive PATH] sync
+
+Refresh the local imsgcrawl archive from the Messages database.
+`)
+	case "status":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--db PATH] [--archive PATH] status
+
+Report source/archive readability and aggregate counts.
+`)
+	case "chats":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--archive PATH] chats [--limit N|--all]
+
+List archived chats.
+
+Flags:
+  --limit N   Maximum chats to print. Default: all.
+  --all       Print all chats. This is also the default.
+`)
+	case "messages":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--archive PATH] messages --chat ID [--limit N|--all] [--asc]
+
+List archived messages for one chat.
+
+Flags:
+  --chat ID   Chat ID from imsgcrawl chats.
+  --limit N   Maximum messages to print. Default: 50.
+  --all       Print all messages for the chat.
+  --asc       Show oldest messages first.
+`)
+	case "search":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--archive PATH] search [--limit N|--all] QUERY
+
+Search archived message text.
+
+Flags:
+  --limit N   Maximum search results. Default: 20.
+  --all       Print all matching search results.
+`)
+	case "contacts", "contacts export":
+		_, _ = fmt.Fprint(w, `Usage:
+  imsgcrawl [--json] [--db PATH] contacts export
+
+Export phone contacts from the Messages source database.
+`)
+	default:
+		return usageErr(fmt.Errorf("unknown help topic %q", topic))
+	}
+	return nil
 }
 
 func usageErr(err error) error {

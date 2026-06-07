@@ -25,6 +25,9 @@ type statusOutput struct {
 }
 
 func (r *runtime) runSync(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"sync"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl sync", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
@@ -41,6 +44,9 @@ func (r *runtime) runSync(args []string) error {
 }
 
 func (r *runtime) runStatus(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"status"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl status", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
@@ -117,6 +123,9 @@ func setStatusState(out *statusOutput, archiveProblem bool) {
 }
 
 func (r *runtime) runChats(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"chats"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl chats", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	limit := fs.Int("limit", 0, "")
@@ -143,6 +152,9 @@ func (r *runtime) runChats(args []string) error {
 }
 
 func (r *runtime) runMessages(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"messages"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl messages", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	chatID := fs.String("chat", "", "")
@@ -177,6 +189,9 @@ func (r *runtime) runMessages(args []string) error {
 }
 
 func (r *runtime) runSearch(args []string) error {
+	if hasHelpFlag(args) {
+		return printCommandUsage(r.stdout, []string{"search"})
+	}
 	fs := flag.NewFlagSet("imsgcrawl search", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	limit := fs.Int("limit", 20, "")
