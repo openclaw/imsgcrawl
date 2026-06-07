@@ -49,6 +49,7 @@ func hasString(values []string, want string) bool {
 
 func createMessagesFixture(t *testing.T, path string) {
 	t.Helper()
+	longLaunchNote := "latest launch note with candles budget and tariffs. " + strings.Repeat("This sentence keeps going so transcript output must stay whole. ", 3) + "full tail marker"
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
@@ -77,14 +78,17 @@ func createMessagesFixture(t *testing.T, path string) {
 		`insert into chat(rowid, guid, display_name, chat_identifier, service_name, room_name, is_archived) values (1, 'chat-one', 'Older Name', '+15550100', 'iMessage', '', 0)`,
 		`insert into chat(rowid, guid, display_name, chat_identifier, service_name, room_name, is_archived) values (2, 'chat-two', 'Most Recent Name', '0015550100', 'SMS', '', 0)`,
 		`insert into chat(rowid, guid, display_name, chat_identifier, service_name, room_name, is_archived) values (3, 'chat-three', '', '+15550103', 'SMS', '', 0)`,
-		`insert into chat(rowid, guid, display_name, chat_identifier, service_name, room_name, is_archived) values (4, 'chat-four', '', 'group-chat', 'SMS', '', 0)`,
+		`insert into chat(rowid, guid, display_name, chat_identifier, service_name, room_name, is_archived) values (4, 'chat-four', '', 'group-chat', 'SMS', 'Cabinet Group', 0)`,
 		`insert into chat_handle_join(chat_id, handle_id) values (1, 1)`,
 		`insert into chat_handle_join(chat_id, handle_id) values (2, 2)`,
 		`insert into chat_handle_join(chat_id, handle_id) values (3, 4)`,
+		`insert into chat_handle_join(chat_id, handle_id) values (4, 4)`,
+		`insert into chat_handle_join(chat_id, handle_id) values (4, 5)`,
+		`insert into chat_handle_join(chat_id, handle_id) values (4, 6)`,
 		`insert into message(rowid, guid, handle_id, date, service, is_from_me, text, attributedBody) values (1, 'message-one', 1, 100, 'iMessage', 0, 'older hello', null)`,
 		`insert into message(rowid, guid, handle_id, date, service, is_from_me, text, attributedBody) values (2, 'message-two', 2, 200, 'SMS', 0, '', null)`,
 		`insert into message(rowid, guid, handle_id, date, service, is_from_me, text, attributedBody) values (3, 'message-three', 2, 250, 'SMS', 1, 'latest launch note', null)`,
-		`insert into message(rowid, guid, handle_id, date, service, is_from_me, text, attributedBody) values (4, 'message-four', 4, 300, 'SMS', 0, 'phone fallback row', null)`,
+		`insert into message(rowid, guid, handle_id, date, service, is_from_me, text, attributedBody) values (4, 'message-four', 4, 300, 'SMS', 0, 'group fallback row', null)`,
 		`insert into chat_message_join(chat_id, message_id) values (1, 1)`,
 		`insert into chat_message_join(chat_id, message_id) values (2, 2)`,
 		`insert into chat_message_join(chat_id, message_id) values (2, 3)`,
@@ -98,6 +102,9 @@ func createMessagesFixture(t *testing.T, path string) {
 		}
 	}
 	if _, err := db.Exec(`update message set attributedBody = ? where rowid = 2`, makeFixtureAttributedBody("earlier launch note")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`update message set text = ? where rowid = 3`, longLaunchNote); err != nil {
 		t.Fatal(err)
 	}
 }

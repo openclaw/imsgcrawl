@@ -96,7 +96,7 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	if err := json.Unmarshal([]byte(syncOut), &syncResult); err != nil {
 		t.Fatalf("sync json = %s err=%v", syncOut, err)
 	}
-	if syncResult.Chats != 4 || syncResult.Participants != 3 || syncResult.ChatMessages != 5 || syncResult.Messages != 4 {
+	if syncResult.Chats != 4 || syncResult.Participants != 6 || syncResult.ChatMessages != 5 || syncResult.Messages != 4 {
 		t.Fatalf("sync result = %#v", syncResult)
 	}
 
@@ -142,8 +142,16 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	if len(chats.Items) != 4 {
 		t.Fatalf("chats = %#v", chats)
 	}
-	if !chatHasMessage(t, chats.Items, "3", "+15550103", 1) || !chatHasMessage(t, chats.Items, "4", "group-chat", 1) {
+	if !chatHasMessage(t, chats.Items, "3", "+15550103", 1) || !chatHasMessage(t, chats.Items, "4", "Cabinet Group", 1) {
 		t.Fatalf("chats did not preserve chat_message_join rows: %#v", chats)
+	}
+	for _, chat := range chats.Items {
+		if chat.ChatID == "4" && (chat.Kind != "group" || chat.ParticipantCount != 3) {
+			t.Fatalf("group chat context = %#v", chat)
+		}
+		if chat.ChatID == "2" && (chat.Kind != "direct" || chat.ParticipantCount != 1) {
+			t.Fatalf("direct chat context = %#v", chat)
+		}
 	}
 
 	messagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--asc")
@@ -154,11 +162,14 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	if messageRows.ChatID != "2" || messageRows.Order != "oldest-first" || messageRows.Returned != 2 || messageRows.Total != 2 || !messageRows.Complete {
 		t.Fatalf("message envelope = %#v", messageRows)
 	}
-	if len(messageRows.Items) != 2 || messageRows.Items[0].Text != "earlier launch note" || messageRows.Items[1].Text != "latest launch note" {
+	if len(messageRows.Items) != 2 || messageRows.Items[0].Text != "earlier launch note" || !strings.Contains(messageRows.Items[1].Text, "full tail marker") {
 		t.Fatalf("messages = %#v", messageRows)
 	}
 	if messageRows.Items[1].GUID != "message-three" || !messageRows.Items[1].FromMe || messageRows.Items[1].Service != "SMS" {
 		t.Fatalf("source message fields = %#v", messageRows.Items[1])
+	}
+	if messageRows.Items[0].SenderLabel != "Most Recent Name" || messageRows.Items[0].SenderHandle != "0015550100" || messageRows.Items[1].SenderLabel != "me" {
+		t.Fatalf("sender labels = %#v", messageRows.Items)
 	}
 
 	attachedOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "3", "--asc")
@@ -168,6 +179,14 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	}
 	if len(attachedRows.Items) != 1 || !attachedRows.Items[0].HasAttachments {
 		t.Fatalf("attached rows = %#v", attachedRows)
+	}
+	groupOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "4", "--asc")
+	var groupRows messageListJSON
+	if err := json.Unmarshal([]byte(groupOut), &groupRows); err != nil {
+		t.Fatalf("group json = %s err=%v", groupOut, err)
+	}
+	if len(groupRows.Items) != 1 || groupRows.Items[0].SenderLabel != "+15550103" {
+		t.Fatalf("group sender fallback = %#v", groupRows.Items)
 	}
 
 	emptyMessagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "999")
@@ -191,8 +210,12 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 		if _, ok := result["snippet"]; !ok {
 			t.Fatalf("search result missing snippet = %#v", result)
 		}
-		if _, ok := result["text"]; ok {
-			t.Fatalf("search result leaked full text = %#v", result)
+		textValue, ok := result["text"]
+		if !ok {
+			t.Fatalf("search result missing full text = %#v", result)
+		}
+		if !strings.Contains(string(textValue), "launch note") {
+			t.Fatalf("search result text = %s", string(textValue))
 		}
 	}
 

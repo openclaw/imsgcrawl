@@ -52,17 +52,22 @@ func (s *Store) Chats(ctx context.Context, limit int) ([]ChatSummary, error) {
 select
   c.source_rowid,
   c.guid,
-  coalesce(nullif(trim(c.display_name), ''), nullif(trim(c.chat_identifier), ''), c.guid) as title,
+  coalesce(nullif(trim(c.display_name), ''), nullif(trim(c.room_name), ''), nullif(trim(c.chat_identifier), ''), c.guid) as title,
+  case
+    when count(distinct cp.handle_rowid) > 1 or nullif(trim(c.room_name), '') is not null then 'group'
+    else 'direct'
+  end as kind,
   coalesce(c.chat_identifier, ''),
+  coalesce(c.room_name, ''),
   coalesce(c.service_name, ''),
   count(distinct cp.handle_rowid) as participants,
-  count(cm.message_rowid) as messages,
+  count(distinct cm.message_rowid) as messages,
   coalesce(max(m.date), 0) as latest_message
 from chats c
 left join chat_participants cp on cp.chat_rowid = c.source_rowid
 left join chat_messages cm on cm.chat_rowid = c.source_rowid
 left join messages m on m.source_rowid = cm.message_rowid
-group by c.source_rowid, c.guid, c.display_name, c.chat_identifier, c.service_name
+group by c.source_rowid, c.guid, c.display_name, c.room_name, c.chat_identifier, c.service_name
 order by latest_message desc, c.source_rowid desc
 `+limitClause, args...)
 	if err != nil {
@@ -73,7 +78,7 @@ order by latest_message desc, c.source_rowid desc
 	for rows.Next() {
 		var c ChatSummary
 		var chatID int64
-		if err := rows.Scan(&chatID, &c.GUID, &c.Title, &c.ChatIdentifier, &c.Service, &c.ParticipantCount, &c.MessageCount, &c.LatestMessageDate); err != nil {
+		if err := rows.Scan(&chatID, &c.GUID, &c.Title, &c.Kind, &c.ChatIdentifier, &c.RoomName, &c.Service, &c.ParticipantCount, &c.MessageCount, &c.LatestMessageDate); err != nil {
 			return nil, err
 		}
 		c.ChatID = strconv.FormatInt(chatID, 10)
@@ -109,13 +114,23 @@ select
   m.guid,
   cm.chat_rowid,
   m.handle_rowid,
+  coalesce(h.handle, ''),
   m.date,
   coalesce(m.service, ''),
   m.is_from_me,
   coalesce(m.text, ''),
-  m.has_attachments
+  m.has_attachments,
+  coalesce(c.display_name, ''),
+  coalesce(pc.participants, 0)
 from chat_messages cm
 join messages m on m.source_rowid = cm.message_rowid
+left join handles h on h.source_rowid = m.handle_rowid
+left join chats c on c.source_rowid = cm.chat_rowid
+left join (
+  select chat_rowid, count(distinct handle_rowid) as participants
+  from chat_participants
+  group by chat_rowid
+) pc on pc.chat_rowid = cm.chat_rowid
 where cm.chat_rowid = ?
 order by m.date %s, m.source_rowid %s
 `+limitClause, order, tie), args...)
@@ -153,14 +168,25 @@ select
   m.guid,
   coalesce(cm.chat_rowid, 0),
   m.handle_rowid,
+  coalesce(h.handle, ''),
   m.date,
   coalesce(m.service, ''),
   m.is_from_me,
   m.has_attachments,
+  coalesce(m.text, ''),
+  coalesce(c.display_name, ''),
+  coalesce(pc.participants, 0),
   snippet(messages_fts, 1, '[', ']', '...', 12)
 from messages_fts
 join messages m on m.source_rowid = messages_fts.source_rowid
 left join chat_messages cm on cm.message_rowid = m.source_rowid
+left join handles h on h.source_rowid = m.handle_rowid
+left join chats c on c.source_rowid = cm.chat_rowid
+left join (
+  select chat_rowid, count(distinct handle_rowid) as participants
+  from chat_participants
+  group by chat_rowid
+) pc on pc.chat_rowid = cm.chat_rowid
 where messages_fts match ?
 order by rank, cm.chat_rowid
 `+limitClause, args...)
@@ -171,9 +197,11 @@ order by rank, cm.chat_rowid
 	out := []SearchResult{}
 	for rows.Next() {
 		var messageID, chatIDValue, handleID int64
+		var participantCount int64
 		var fromMe, hasAttachments int
+		var senderHandle, chatDisplayName string
 		var result SearchResult
-		if err := rows.Scan(&messageID, &result.GUID, &chatIDValue, &handleID, &result.Date, &result.Service, &fromMe, &hasAttachments, &result.Snippet); err != nil {
+		if err := rows.Scan(&messageID, &result.GUID, &chatIDValue, &handleID, &senderHandle, &result.Date, &result.Service, &fromMe, &hasAttachments, &result.Text, &chatDisplayName, &participantCount, &result.Snippet); err != nil {
 			return nil, err
 		}
 		result.MessageID = strconv.FormatInt(messageID, 10)
@@ -183,8 +211,10 @@ order by rank, cm.chat_rowid
 		if handleID != 0 {
 			result.HandleID = strconv.FormatInt(handleID, 10)
 		}
+		result.SenderHandle = senderHandle
 		result.FromMe = fromMe != 0
 		result.HasAttachments = hasAttachments != 0
+		result.SenderLabel = senderLabel(result.FromMe, senderHandle, chatDisplayName, participantCount)
 		out = append(out, result)
 	}
 	return out, rows.Err()
@@ -211,8 +241,10 @@ func scanMessages(rows *sql.Rows) ([]MessageRow, error) {
 	for rows.Next() {
 		var row MessageRow
 		var messageID, chatID, handleID int64
+		var participantCount int64
 		var fromMe, hasAttachments int
-		if err := rows.Scan(&messageID, &row.GUID, &chatID, &handleID, &row.Date, &row.Service, &fromMe, &row.Text, &hasAttachments); err != nil {
+		var chatDisplayName string
+		if err := rows.Scan(&messageID, &row.GUID, &chatID, &handleID, &row.SenderHandle, &row.Date, &row.Service, &fromMe, &row.Text, &hasAttachments, &chatDisplayName, &participantCount); err != nil {
 			return nil, err
 		}
 		row.MessageID = strconv.FormatInt(messageID, 10)
@@ -222,9 +254,25 @@ func scanMessages(rows *sql.Rows) ([]MessageRow, error) {
 		}
 		row.FromMe = fromMe != 0
 		row.HasAttachments = hasAttachments != 0
+		row.SenderLabel = senderLabel(row.FromMe, row.SenderHandle, chatDisplayName, participantCount)
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+func senderLabel(fromMe bool, handle, chatDisplayName string, participantCount int64) string {
+	if fromMe {
+		return "me"
+	}
+	if participantCount <= 1 {
+		if display := strings.TrimSpace(chatDisplayName); display != "" {
+			return display
+		}
+	}
+	if handle = strings.TrimSpace(handle); handle != "" {
+		return handle
+	}
+	return "them"
 }
 
 func (s *Store) syncState(ctx context.Context) (map[string]string, error) {

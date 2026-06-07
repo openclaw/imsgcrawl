@@ -22,7 +22,7 @@ func TestHelpIsCligDevShaped(t *testing.T) {
 		{"sync help", []string{"sync", "--help"}, "Refresh the local imsgcrawl archive"},
 		{"status help", []string{"status", "-h"}, "aggregate counts"},
 		{"chats help", []string{"chats", "--help"}, "--all"},
-		{"messages help", []string{"messages", "--help"}, "Default: 50"},
+		{"messages help", []string{"messages", "--help"}, "Default: 20"},
 		{"search help", []string{"search", "--help"}, "Default: 20"},
 		{"contacts help", []string{"contacts", "--help"}, "contacts export"},
 		{"contacts export help", []string{"contacts", "export", "--help"}, "--json"},

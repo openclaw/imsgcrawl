@@ -20,6 +20,10 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"All: imsgcrawl chats --all",
 		"Open: imsgcrawl messages --chat CHAT_ID",
 		"chat_id",
+		"kind",
+		"people",
+		"group",
+		"Cabinet Group",
 	)
 	assertNotSecretJSON(t, chats)
 
@@ -28,8 +32,10 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"Messages for chat 2: showing 1 of 2, newest-first.",
 		"More: imsgcrawl messages --chat 2 --limit 2",
 		"All: imsgcrawl messages --chat 2 --all",
-		"message_id",
+		"[3]",
+		"me",
 		"latest launch note",
+		"full tail marker",
 	)
 	assertNotSecretJSON(t, messages)
 
@@ -39,9 +45,15 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"More: imsgcrawl search --limit 2 \"launch\"",
 		"All: imsgcrawl search --all \"launch\"",
 		"Open: imsgcrawl messages --chat CHAT_ID",
-		"snippet",
+		"launch note",
 	)
 	assertNotSecretJSON(t, search)
+
+	directSender := runOK(t, "--archive", archivePath, "messages", "--chat", "2", "--asc", "--limit", "1")
+	assertTextContains(t, directSender, "them: Most Recent Name")
+
+	groupSender := runOK(t, "--archive", archivePath, "messages", "--chat", "4", "--asc")
+	assertTextContains(t, groupSender, "them: +15550103")
 }
 
 func TestMetadataAndSyncTextOutputIsAgentReadable(t *testing.T) {
@@ -52,18 +64,20 @@ func TestMetadataAndSyncTextOutputIsAgentReadable(t *testing.T) {
 
 	metadata := runOK(t, "--db", dbPath, "metadata")
 	assertTextContains(t, metadata,
-		"imsgcrawl metadata",
-		"commands:",
+		"iMessage Crawl (imsgcrawl)",
+		"Agent-facing commands:",
 		"status",
-		"json: add --json for the machine-readable manifest",
+		"Machine output: add --json",
 	)
 	assertNotSecretJSON(t, metadata)
 
 	syncOut := runOK(t, "--db", dbPath, "--archive", archivePath, "sync")
 	assertTextContains(t, syncOut,
-		"sync complete",
-		"chats: 4",
-		"messages: 4",
+		"Sync complete",
+		"Messages source:",
+		"Local archive:",
+		"Chats: 4",
+		"Messages: 4",
 	)
 	assertNotSecretJSON(t, syncOut)
 }

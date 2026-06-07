@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultChatLimit    = 50
-	defaultMessageLimit = 50
+	defaultMessageLimit = 20
 	defaultSearchLimit  = 20
 )
 

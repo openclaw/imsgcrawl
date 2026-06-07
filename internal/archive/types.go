@@ -32,7 +32,9 @@ type ChatSummary struct {
 	ChatID            string `json:"chat_id"`
 	GUID              string `json:"guid"`
 	Title             string `json:"title"`
+	Kind              string `json:"kind"`
 	ChatIdentifier    string `json:"chat_identifier,omitempty"`
+	RoomName          string `json:"room_name,omitempty"`
 	Service           string `json:"service,omitempty"`
 	ParticipantCount  int64  `json:"participant_count"`
 	MessageCount      int64  `json:"message_count"`
@@ -44,6 +46,8 @@ type MessageRow struct {
 	GUID           string `json:"guid"`
 	ChatID         string `json:"chat_id"`
 	HandleID       string `json:"handle_id,omitempty"`
+	SenderHandle   string `json:"sender_handle,omitempty"`
+	SenderLabel    string `json:"sender_label,omitempty"`
 	Date           int64  `json:"date"`
 	Service        string `json:"service,omitempty"`
 	FromMe         bool   `json:"from_me"`
@@ -56,9 +60,12 @@ type SearchResult struct {
 	GUID           string `json:"guid"`
 	ChatID         string `json:"chat_id,omitempty"`
 	HandleID       string `json:"handle_id,omitempty"`
+	SenderHandle   string `json:"sender_handle,omitempty"`
+	SenderLabel    string `json:"sender_label,omitempty"`
 	Date           int64  `json:"date"`
 	Service        string `json:"service,omitempty"`
 	FromMe         bool   `json:"from_me"`
 	HasAttachments bool   `json:"has_attachments,omitempty"`
+	Text           string `json:"text,omitempty"`
 	Snippet        string `json:"snippet,omitempty"`
 }

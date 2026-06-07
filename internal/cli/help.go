@@ -76,7 +76,7 @@ List archived messages for one chat.
 
 Flags:
   --chat ID   Chat ID from imsgcrawl chats.
-  --limit N   Maximum messages to print. Default: 50.
+  --limit N   Maximum messages to print. Default: 20.
   --all       Print all messages for the chat.
   --asc       Show oldest messages first.
 `)
