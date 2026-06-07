@@ -128,16 +128,19 @@ func printChatsText(w io.Writer, value chatListOutput) error {
 	if _, err := io.WriteString(w, "Open: imsgcrawl messages --chat CHAT_ID\n\n"); err != nil {
 		return err
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(tw, "chat\tkind\tmsgs\tlatest\tconversation"); err != nil {
-		return err
-	}
+	width := textOutputWidth()
+	columns := chatTextColumns(width)
+	rows := tableRows(len(value.Items))
 	for _, item := range value.Items {
-		if _, err := fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", item.ChatID, item.Kind, item.MessageCount, formatAppleDate(item.LatestMessageDate), cleanCell(chatConversation(item), 96)); err != nil {
-			return err
-		}
+		rows = append(rows, []string{
+			item.ChatID,
+			item.Kind,
+			strconv.FormatInt(item.MessageCount, 10),
+			formatAppleDate(item.LatestMessageDate),
+			chatConversation(item),
+		})
 	}
-	return tw.Flush()
+	return renderTextTable(w, columns, rows)
 }
 
 func printMessagesText(w io.Writer, value messageListOutput) error {
@@ -156,25 +159,18 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 	if _, err := io.WriteString(w, "Search: imsgcrawl search QUERY\n\n"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(w, "%-16s  %-22s  %s\n", "date", "from", "service"); err != nil {
-		return err
-	}
+	width := textOutputWidth()
+	columns := messageTextColumns(width)
+	rows := tableRows(len(value.Items))
 	for _, item := range value.Items {
-		service := item.Service
-		if item.HasAttachments {
-			service = strings.TrimSpace(service + " attachment(s)")
-		}
-		if _, err := fmt.Fprintf(w, "%-16s  %-22s  %s\n", formatAppleDate(item.Date), cleanCell(senderName(item.FromMe, item.SenderLabel), 22), emptyDash(service)); err != nil {
-			return err
-		}
-		if err := writeIndentedBody(w, item.Text); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\n"); err != nil {
-			return err
-		}
+		rows = append(rows, []string{
+			formatAppleDate(item.Date),
+			senderName(item.FromMe, item.SenderLabel),
+			messageService(item.Service, item.HasAttachments),
+			displayMessageText(item.Text, item.HasAttachments),
+		})
 	}
-	return nil
+	return renderTextTable(w, columns, rows)
 }
 
 func printSearchText(w io.Writer, value searchListOutput) error {
@@ -186,45 +182,21 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 			return err
 		}
 	}
-	if _, err := io.WriteString(w, "Open: imsgcrawl messages --chat CHAT_ID\n\n"); err != nil {
+	if _, err := io.WriteString(w, "Use --json when you need local chat IDs for follow-up commands.\n\n"); err != nil {
 		return err
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(tw, "#\tchat\tdate\tfrom\tconversation"); err != nil {
-		return err
+	width := textOutputWidth()
+	columns := searchTextColumns(width)
+	rows := tableRows(len(value.Items))
+	for _, item := range value.Items {
+		rows = append(rows, []string{
+			formatAppleDate(item.Date),
+			senderName(item.FromMe, item.SenderLabel),
+			searchConversation(item),
+			searchText(item),
+		})
 	}
-	for i, item := range value.Items {
-		if _, err := fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\n", i+1, emptyDash(item.ChatID), formatAppleDate(item.Date), senderName(item.FromMe, item.SenderLabel), cleanCell(searchConversation(item), 72)); err != nil {
-			return err
-		}
-	}
-	if err := tw.Flush(); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, "\n"); err != nil {
-		return err
-	}
-	for i, item := range value.Items {
-		if _, err := fmt.Fprintf(w, "%d. %s\n", i+1, searchConversation(item)); err != nil {
-			return err
-		}
-		body := item.Text
-		if body == "" {
-			body = item.Snippet
-		}
-		if err := writeIndentedBody(w, body); err != nil {
-			return err
-		}
-		if item.ChatID != "" {
-			if _, err := fmt.Fprintf(w, "  Open: imsgcrawl messages --chat %s\n", item.ChatID); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, "\n"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return renderTextTable(w, columns, rows)
 }
 
 func printContactsText(w io.Writer, value contactExport) error {
@@ -256,106 +228,9 @@ func formatAppleDate(value int64) string {
 	return epoch.Add(time.Duration(value)).Local().Format("2006-01-02 15:04")
 }
 
-func senderName(fromMe bool, label string) string {
-	if fromMe {
-		return "me"
-	}
-	label = strings.TrimSpace(label)
-	if label != "" && label != "them" {
-		return label
-	}
-	return "them"
-}
-
-func chatConversation(item archive.ChatSummary) string {
-	title := strings.TrimSpace(item.Title)
-	people := participantPreview(item.ParticipantHandles, item.ParticipantCount)
-	if item.Kind == "group" {
-		switch {
-		case title != "" && people != "":
-			return title + " (" + people + ")"
-		case title != "":
-			return title
-		case people != "":
-			return "group with " + people
-		default:
-			return "group chat"
-		}
-	}
-	if title != "" {
-		return title
-	}
-	if people != "" {
-		return people
-	}
-	if item.ChatID != "" {
-		return "chat " + item.ChatID
-	}
-	return "unknown chat"
-}
-
-func searchConversation(item archive.SearchResult) string {
-	chat := archive.ChatSummary{
-		ChatID:             item.ChatID,
-		Title:              item.ChatTitle,
-		Kind:               item.ChatKind,
-		ParticipantCount:   item.ChatParticipantCount,
-		ParticipantHandles: item.ChatParticipantHandles,
-	}
-	return chatConversation(chat)
-}
-
-func participantPreview(handles []string, total int64) string {
-	if len(handles) == 0 {
-		if total > 0 {
-			return fmt.Sprintf("%d people", total)
-		}
-		return ""
-	}
-	limit := len(handles)
-	if limit > 4 {
-		limit = 4
-	}
-	parts := append([]string{}, handles[:limit]...)
-	if remaining := int(total) - limit; remaining > 0 {
-		parts = append(parts, fmt.Sprintf("+%d more", remaining))
-	}
-	return strings.Join(parts, ", ")
-}
-
-func writeIndentedBody(w io.Writer, value string) error {
-	value = strings.ReplaceAll(value, "\r\n", "\n")
-	value = strings.ReplaceAll(value, "\r", "\n")
-	if strings.TrimSpace(value) == "" {
-		_, err := io.WriteString(w, "  (empty)\n")
-		return err
-	}
-	value = strings.TrimRight(value, "\n")
-	for _, line := range strings.Split(value, "\n") {
-		if _, err := fmt.Fprintf(w, "  %s\n", line); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func emptyDash(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return "-"
 	}
 	return value
-}
-
-func cleanCell(value string, limit int) string {
-	value = strings.Join(strings.Fields(value), " ")
-	if len(value) <= limit {
-		if value == "" {
-			return "-"
-		}
-		return value
-	}
-	if limit <= 1 {
-		return value[:limit]
-	}
-	return value[:limit-1] + "..."
 }

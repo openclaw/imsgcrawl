@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/openclaw/imsgcrawl/internal/archive"
 )
 
 func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
@@ -49,14 +51,17 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"Search \"launch\": showing 1 of 2.",
 		"More: imsgcrawl search --limit 2 \"launch\"",
 		"All: imsgcrawl search --all \"launch\"",
-		"Open: imsgcrawl messages --chat CHAT_ID",
+		"Use --json when you need local chat IDs for follow-up commands.",
 		"launch note",
 		"conversation",
+		"text",
 		"Most Recent Name",
-		"Open: imsgcrawl messages --chat 2",
 	)
 	if strings.Contains(search, "[3]") || strings.Contains(search, "message_id") {
 		t.Fatalf("search text leaked unlabeled message IDs:\n%s", search)
+	}
+	if strings.Contains(search, "\n#") || strings.Contains(search, "\n1.") || strings.Contains(search, "\t2\t") {
+		t.Fatalf("search text kept raw result numbers or chat ID table shape:\n%s", search)
 	}
 	assertNotSecretJSON(t, search)
 
@@ -91,6 +96,27 @@ func TestMetadataAndSyncTextOutputIsAgentReadable(t *testing.T) {
 		"Messages: 4",
 	)
 	assertNotSecretJSON(t, syncOut)
+}
+
+func TestDisplayMessageTextNormalizesAttachmentPlaceholder(t *testing.T) {
+	if got := displayMessageText("\uFFFC", true); got != "(attachment)" {
+		t.Fatalf("attachment-only text = %q", got)
+	}
+	if got := displayMessageText("photo \uFFFC attached", true); got != "photo [attachment] attached" {
+		t.Fatalf("mixed attachment text = %q", got)
+	}
+}
+
+func TestChatConversationSuppressesMachineGroupTitle(t *testing.T) {
+	chat := archive.ChatSummary{
+		Title:              "chat297778184386366590",
+		Kind:               "group",
+		ParticipantCount:   2,
+		ParticipantHandles: []string{"alice@example.com", "bob@example.com"},
+	}
+	if got := chatConversation(chat); got != "group with alice@example.com, bob@example.com" {
+		t.Fatalf("machine group title was not suppressed: %q", got)
+	}
 }
 
 func assertTextContains(t *testing.T, got string, wants ...string) {

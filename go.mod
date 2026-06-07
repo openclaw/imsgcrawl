@@ -3,11 +3,13 @@ module github.com/openclaw/imsgcrawl
 go 1.26.2
 
 require (
+	github.com/mattn/go-runewidth v0.0.23
 	github.com/openclaw/crawlkit v0.7.0
 	modernc.org/sqlite v1.50.1
 )
 
 require (
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect

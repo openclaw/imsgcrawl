@@ -96,40 +96,35 @@ chat  kind    msgs  latest            conversation
 
 ### Messages
 
-`messages` is table-like for scanning, with the full message body attached
-under each row. Message bodies are not truncated; row limits control size.
+`messages` is a wrapped table for scanning. Message bodies stay in the `text`
+column and are not truncated; row limits control size.
 
 ```text
-Messages in Cabinet Group (chat 42): showing 2 of 6, newest-first.
+Messages in Cabinet Group (chat 42): showing 3 of 6, newest-first.
 More: imsgcrawl messages --chat 42 --limit 6
 All: imsgcrawl messages --chat 42 --all
 Search: imsgcrawl search QUERY
 
-date              from        service
-2026-06-07 09:10  me          iMessage
-  The candles budget is CORRECT.
-
-2026-06-07 09:09  JD Vance    iMessage
-  Sir, I have prepared bullet points:
-  - The hum is louder
-  - The couch remains loyal
+date              from        service           text
+2026-06-07 09:10  me          iMessage          The candles budget is CORRECT.
+2026-06-07 09:09  JD Vance    iMessage          Sir, I have prepared bullet
+                                                points:
+                                                - The hum is louder
+                                                - The couch remains loyal
+2026-06-07 09:08  Failing...  iMessage +attach  (attachment)
 ```
 
 ### Search
 
-`search` shows which chat a hit came from, then prints the full matched text
-and the command to open the chat.
+`search` shows which conversation a hit came from and keeps the full matched
+text in the table. Use JSON when an agent or script needs local chat IDs.
 
 ```text
 Search "candles budget": showing 1 of 1.
-Open: imsgcrawl messages --chat CHAT_ID
+Use --json when you need local chat IDs for follow-up commands.
 
-#  chat  date              from  conversation
-1  42    2026-06-07 09:10  me    Cabinet Group (Elon, JD, Xi, +1 more)
-
-1. Cabinet Group (Elon, JD, Xi, +1 more)
-  The candles budget is CORRECT.
-  Open: imsgcrawl messages --chat 42
+date              from  conversation                  text
+2026-06-07 09:10  me    Cabinet Group (Elon, JD...    The candles budget is CORRECT.
 ```
 
 ### Contacts
