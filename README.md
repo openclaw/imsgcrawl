@@ -55,8 +55,17 @@ writes exact stdout/stderr for progressive text and JSON commands to `/tmp`.
 scripts/agent-smoke-transcript.sh --query "launch notes"
 ```
 
-The transcript contains raw local Messages-derived output. Keep it local unless
-the user explicitly asks to share it.
+The script prints paths to:
+
+- `review.txt`: bounded previews, byte counts, raw file paths, and the agent
+  checklist;
+- `manifest.jsonl` and `commands.tsv`: command index with exit codes and raw
+  stream paths;
+- `raw/`: exact stdout/stderr per command.
+
+Use `--inline-raw` only when you explicitly want a full inline transcript in
+addition to the raw files. These artifacts contain raw local Messages-derived
+output. Keep them local unless the user explicitly asks to share them.
 
 ## Commands
 
