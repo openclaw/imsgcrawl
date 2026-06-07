@@ -166,7 +166,6 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 		rows = append(rows, []string{
 			formatAppleDate(item.Date),
 			senderName(item.FromMe, item.SenderLabel),
-			messageService(item.Service, item.HasAttachments),
 			displayMessageText(item.Text, item.HasAttachments),
 		})
 	}

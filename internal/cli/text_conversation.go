@@ -37,19 +37,30 @@ func chatTextColumns(width int) []textColumn {
 }
 
 func messageTextColumns(width int) []textColumn {
-	dateWidth := 16
-	fromWidth := 18
-	serviceWidth := 16
-	if width >= 100 {
-		fromWidth = 22
-	}
-	textWidth := textColumnWidth(width, dateWidth, fromWidth, serviceWidth)
+	dateWidth, fromWidth, textWidth := messageColumnWidths(width)
 	return []textColumn{
 		{header: "date", width: dateWidth},
-		{header: "from", width: fromWidth},
-		{header: "service", width: serviceWidth},
+		{header: "from", width: fromWidth, wrap: true},
 		{header: "text", width: textWidth, wrap: true},
 	}
+}
+
+func messageColumnWidths(width int) (dateWidth int, fromWidth int, textWidth int) {
+	dateWidth = 16
+	gaps := 2 * len(textTableGap)
+	remaining := width - dateWidth - gaps
+	if remaining < 47 {
+		remaining = 47
+	}
+	fromWidth = clampWidth(remaining*2/5, 18, 30)
+	textWidth = remaining - fromWidth
+	if textWidth < 30 {
+		needed := 30 - textWidth
+		fromReduction := minInt(needed, fromWidth-14)
+		fromWidth -= fromReduction
+		textWidth = remaining - fromWidth
+	}
+	return dateWidth, fromWidth, textWidth
 }
 
 func searchTextColumns(width int) []textColumn {
@@ -99,17 +110,6 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
-}
-
-func messageService(service string, hasAttachments bool) string {
-	service = strings.TrimSpace(service)
-	if hasAttachments {
-		if service == "" {
-			return "attachment"
-		}
-		return service + " +attach"
-	}
-	return service
 }
 
 func searchText(item archive.SearchResult) string {

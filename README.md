@@ -105,13 +105,12 @@ More: imsgcrawl messages --chat 42 --limit 6
 All: imsgcrawl messages --chat 42 --all
 Search: imsgcrawl search QUERY
 
-date              from        service           text
-2026-06-07 09:10  me          iMessage          The candles budget is CORRECT.
-2026-06-07 09:09  JD Vance    iMessage          Sir, I have prepared bullet
-                                                points:
-                                                - The hum is louder
-                                                - The couch remains loyal
-2026-06-07 09:08  Failing...  iMessage +attach  (attachment)
+date              from        text
+2026-06-07 09:10  me          The candles budget is CORRECT.
+2026-06-07 09:09  JD Vance    Sir, I have prepared bullet points:
+                              - The hum is louder
+                              - The couch remains loyal
+2026-06-07 09:08  Failing Elon  (attachment)
 ```
 
 ### Search

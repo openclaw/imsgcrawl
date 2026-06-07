@@ -37,12 +37,16 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"All: imsgcrawl messages --chat 2 --all",
 		"date",
 		"from",
+		"text",
 		"me",
 		"latest launch note",
 		"full tail marker",
 	)
 	if strings.Contains(messages, "[3]") || strings.Contains(messages, "message_id") {
 		t.Fatalf("messages text leaked unlabeled message IDs:\n%s", messages)
+	}
+	if strings.Contains(messages, "service") {
+		t.Fatalf("messages text kept low-value service column:\n%s", messages)
 	}
 	assertNotSecretJSON(t, messages)
 

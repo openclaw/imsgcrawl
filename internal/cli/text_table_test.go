@@ -45,3 +45,21 @@ func TestSearchColumnsWrapContextWithoutEllipsis(t *testing.T) {
 		t.Fatalf("search table truncated context:\n%s", out.String())
 	}
 }
+
+func TestMessageColumnsWrapSenderWithoutServiceOrEllipsis(t *testing.T) {
+	var out bytes.Buffer
+	err := renderTextTable(&out, messageTextColumns(88), [][]string{{
+		"2026-06-07 09:10",
+		"michaelpalmer123@icloud.com",
+		"Sure. This message should keep sender identity visible.",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "...") {
+		t.Fatalf("message table truncated sender:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "service") || strings.Contains(out.String(), "iMessage") {
+		t.Fatalf("message table kept service column:\n%s", out.String())
+	}
+}
