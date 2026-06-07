@@ -16,7 +16,7 @@ func TestHelpIsCligDevShaped(t *testing.T) {
 		{"top help long", []string{"--help"}, "imsgcrawl help COMMAND"},
 		{"top help short", []string{"-h"}, "Global flags:"},
 		{"help command", []string{"help"}, "imsgcrawl help COMMAND"},
-		{"help chats", []string{"help", "chats"}, "Default: all"},
+		{"help chats", []string{"help", "chats"}, "Default: 50"},
 		{"help contacts export", []string{"help", "contacts", "export"}, "contacts export"},
 		{"metadata help", []string{"metadata", "--help"}, "Print crawlkit control metadata"},
 		{"sync help", []string{"sync", "--help"}, "Refresh the local imsgcrawl archive"},

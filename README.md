@@ -61,10 +61,26 @@ the user explicitly asks to share it.
 ## Commands
 
 ```bash
+imsgcrawl metadata
+imsgcrawl status
+imsgcrawl sync
+imsgcrawl chats
+imsgcrawl chats --all
+imsgcrawl messages --chat 123 --limit 50
+imsgcrawl search --limit 20 "launch notes"
+imsgcrawl contacts export
+```
+
+Default output is compact text for humans and agents: list commands say how
+many rows are shown, whether more rows exist, and which command to run next.
+Use `--all` only when you explicitly want complete local output.
+
+Use `--json` for machine parsing:
+
+```bash
 imsgcrawl --json metadata
 imsgcrawl --json status
 imsgcrawl --json sync
-imsgcrawl --json chats
 imsgcrawl --json chats --limit 20
 imsgcrawl --json messages --chat 123 --limit 50
 imsgcrawl --json messages --chat 123 --all

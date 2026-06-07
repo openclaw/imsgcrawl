@@ -82,6 +82,10 @@ order by latest_message desc, c.source_rowid desc
 	return out, rows.Err()
 }
 
+func (s *Store) CountChats(ctx context.Context) (int64, error) {
+	return countTable(ctx, s.store.DB(), "chats")
+}
+
 func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool) ([]MessageRow, error) {
 	id, err := parseID(chatID, "chat")
 	if err != nil {
@@ -120,6 +124,16 @@ order by m.date %s, m.source_rowid %s
 	}
 	defer func() { _ = rows.Close() }()
 	return scanMessages(rows)
+}
+
+func (s *Store) CountMessages(ctx context.Context, chatID string) (int64, error) {
+	id, err := parseID(chatID, "chat")
+	if err != nil {
+		return 0, err
+	}
+	var count int64
+	err = s.store.DB().QueryRowContext(ctx, `select count(*) from chat_messages where chat_rowid = ?`, id).Scan(&count)
+	return count, err
 }
 
 func (s *Store) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
@@ -174,6 +188,22 @@ order by rank, cm.chat_rowid
 		out = append(out, result)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) CountSearch(ctx context.Context, query string) (int64, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return 0, errors.New("search query is required")
+	}
+	var count int64
+	err := s.store.DB().QueryRowContext(ctx, `
+select count(*)
+from messages_fts
+join messages m on m.source_rowid = messages_fts.source_rowid
+left join chat_messages cm on cm.message_rowid = m.source_rowid
+where messages_fts match ?
+`, ftsQuery(query)).Scan(&count)
+	return count, err
 }
 
 func scanMessages(rows *sql.Rows) ([]MessageRow, error) {

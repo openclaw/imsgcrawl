@@ -128,7 +128,7 @@ func (r *runtime) runChats(args []string) error {
 	}
 	fs := flag.NewFlagSet("imsgcrawl chats", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	limit := fs.Int("limit", 0, "")
+	limit := fs.Int("limit", defaultChatLimit, "")
 	all := fs.Bool("all", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
@@ -136,18 +136,28 @@ func (r *runtime) runChats(args []string) error {
 	if fs.NArg() != 0 {
 		return usageErr(errors.New("chats takes flags only"))
 	}
-	if *limit < 0 {
-		return usageErr(errors.New("chats --limit must be >= 0"))
+	if *limit <= 0 {
+		return usageErr(errors.New("chats --limit must be positive"))
 	}
 	if *all && flagPassed(fs, "limit") {
 		return usageErr(errors.New("use either --all or --limit"))
+	}
+	if *all {
+		*limit = 0
 	}
 	return r.withArchive(func(st *archive.Store) error {
 		chats, err := st.Chats(r.ctx, *limit)
 		if err != nil {
 			return err
 		}
-		return r.print(chats)
+		total, err := st.CountChats(r.ctx)
+		if err != nil {
+			return err
+		}
+		return r.print(chatListOutput{
+			listHeader: newListHeader("chats", len(chats), total, *limit),
+			Items:      chats,
+		})
 	})
 }
 
@@ -158,7 +168,7 @@ func (r *runtime) runMessages(args []string) error {
 	fs := flag.NewFlagSet("imsgcrawl messages", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	chatID := fs.String("chat", "", "")
-	limit := fs.Int("limit", 50, "")
+	limit := fs.Int("limit", defaultMessageLimit, "")
 	all := fs.Bool("all", false, "")
 	asc := fs.Bool("asc", false, "")
 	if err := fs.Parse(args); err != nil {
@@ -184,7 +194,20 @@ func (r *runtime) runMessages(args []string) error {
 		if err != nil {
 			return err
 		}
-		return r.print(rows)
+		total, err := st.CountMessages(r.ctx, *chatID)
+		if err != nil {
+			return err
+		}
+		order := "newest-first"
+		if *asc {
+			order = "oldest-first"
+		}
+		return r.print(messageListOutput{
+			listHeader: newListHeader("messages", len(rows), total, *limit),
+			ChatID:     *chatID,
+			Order:      order,
+			Items:      rows,
+		})
 	})
 }
 
@@ -194,7 +217,7 @@ func (r *runtime) runSearch(args []string) error {
 	}
 	fs := flag.NewFlagSet("imsgcrawl search", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	limit := fs.Int("limit", 20, "")
+	limit := fs.Int("limit", defaultSearchLimit, "")
 	all := fs.Bool("all", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
@@ -217,7 +240,15 @@ func (r *runtime) runSearch(args []string) error {
 		if err != nil {
 			return err
 		}
-		return r.print(results)
+		total, err := st.CountSearch(r.ctx, query)
+		if err != nil {
+			return err
+		}
+		return r.print(searchListOutput{
+			listHeader: newListHeader("search", len(results), total, *limit),
+			Query:      query,
+			Items:      results,
+		})
 	})
 }
 

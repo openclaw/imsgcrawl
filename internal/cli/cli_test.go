@@ -117,89 +117,77 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	}
 
 	allChatsOut := runOK(t, "--archive", archivePath, "--json", "chats")
-	var allChats []struct {
-		ChatID string `json:"chat_id"`
-	}
+	var allChats chatListJSON
 	if err := json.Unmarshal([]byte(allChatsOut), &allChats); err != nil {
 		t.Fatalf("all chats json = %s err=%v", allChatsOut, err)
 	}
-	if len(allChats) != 4 {
+	if allChats.Returned != 4 || allChats.Total != 4 || allChats.Limit != defaultChatLimit || !allChats.Complete || len(allChats.Items) != 4 {
 		t.Fatalf("bare chats should return all chats, got %#v", allChats)
 	}
 
 	limitedChatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "2")
-	var limitedChats []struct {
-		ChatID string `json:"chat_id"`
-	}
+	var limitedChats chatListJSON
 	if err := json.Unmarshal([]byte(limitedChatsOut), &limitedChats); err != nil {
 		t.Fatalf("limited chats json = %s err=%v", limitedChatsOut, err)
 	}
-	if len(limitedChats) != 2 {
+	if limitedChats.Returned != 2 || limitedChats.Total != 4 || limitedChats.Limit != 2 || limitedChats.Complete || len(limitedChats.Items) != 2 {
 		t.Fatalf("limited chats = %#v", limitedChats)
 	}
 
 	chatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "4")
-	var chats []struct {
-		ChatID            string `json:"chat_id"`
-		Title             string `json:"title"`
-		MessageCount      int64  `json:"message_count"`
-		LatestMessageDate int64  `json:"latest_message_date"`
-	}
+	var chats chatListJSON
 	if err := json.Unmarshal([]byte(chatsOut), &chats); err != nil {
 		t.Fatalf("chats json = %s err=%v", chatsOut, err)
 	}
-	if len(chats) != 4 {
+	if len(chats.Items) != 4 {
 		t.Fatalf("chats = %#v", chats)
 	}
-	if !chatHasMessage(t, chats, "3", "+15550103", 1) || !chatHasMessage(t, chats, "4", "group-chat", 1) {
+	if !chatHasMessage(t, chats.Items, "3", "+15550103", 1) || !chatHasMessage(t, chats.Items, "4", "group-chat", 1) {
 		t.Fatalf("chats did not preserve chat_message_join rows: %#v", chats)
 	}
 
 	messagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--asc")
-	var messageRows []struct {
-		MessageID string `json:"message_id"`
-		GUID      string `json:"guid"`
-		ChatID    string `json:"chat_id"`
-		Service   string `json:"service"`
-		Text      string `json:"text"`
-		FromMe    bool   `json:"from_me"`
-	}
+	var messageRows messageListJSON
 	if err := json.Unmarshal([]byte(messagesOut), &messageRows); err != nil {
 		t.Fatalf("messages json = %s err=%v", messagesOut, err)
 	}
-	if len(messageRows) != 2 || messageRows[0].Text != "earlier launch note" || messageRows[1].Text != "latest launch note" {
+	if messageRows.ChatID != "2" || messageRows.Order != "oldest-first" || messageRows.Returned != 2 || messageRows.Total != 2 || !messageRows.Complete {
+		t.Fatalf("message envelope = %#v", messageRows)
+	}
+	if len(messageRows.Items) != 2 || messageRows.Items[0].Text != "earlier launch note" || messageRows.Items[1].Text != "latest launch note" {
 		t.Fatalf("messages = %#v", messageRows)
 	}
-	if messageRows[1].GUID != "message-three" || !messageRows[1].FromMe || messageRows[1].Service != "SMS" {
-		t.Fatalf("source message fields = %#v", messageRows[1])
+	if messageRows.Items[1].GUID != "message-three" || !messageRows.Items[1].FromMe || messageRows.Items[1].Service != "SMS" {
+		t.Fatalf("source message fields = %#v", messageRows.Items[1])
 	}
 
 	attachedOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "3", "--asc")
-	var attachedRows []struct {
-		MessageID      string `json:"message_id"`
-		HasAttachments bool   `json:"has_attachments"`
-	}
+	var attachedRows messageListJSON
 	if err := json.Unmarshal([]byte(attachedOut), &attachedRows); err != nil {
 		t.Fatalf("attached json = %s err=%v", attachedOut, err)
 	}
-	if len(attachedRows) != 1 || !attachedRows[0].HasAttachments {
+	if len(attachedRows.Items) != 1 || !attachedRows.Items[0].HasAttachments {
 		t.Fatalf("attached rows = %#v", attachedRows)
 	}
 
 	emptyMessagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "999")
-	if emptyMessagesOut != "[]\n" {
-		t.Fatalf("empty messages output = %q", emptyMessagesOut)
+	var emptyMessages messageListJSON
+	if err := json.Unmarshal([]byte(emptyMessagesOut), &emptyMessages); err != nil {
+		t.Fatalf("empty messages json = %s err=%v", emptyMessagesOut, err)
+	}
+	if emptyMessages.Returned != 0 || emptyMessages.Total != 0 || !emptyMessages.Complete || len(emptyMessages.Items) != 0 {
+		t.Fatalf("empty messages output = %#v", emptyMessages)
 	}
 
 	searchOut := runOK(t, "--archive", archivePath, "--json", "search", "launch")
-	var results []map[string]json.RawMessage
+	var results searchListJSON
 	if err := json.Unmarshal([]byte(searchOut), &results); err != nil {
 		t.Fatalf("search json = %s err=%v", searchOut, err)
 	}
-	if len(results) != 2 {
+	if results.Query != "launch" || results.Returned != 2 || results.Total != 2 || !results.Complete || len(results.Items) != 2 {
 		t.Fatalf("search results = %#v", results)
 	}
-	for _, result := range results {
+	for _, result := range results.Items {
 		if _, ok := result["snippet"]; !ok {
 			t.Fatalf("search result missing snippet = %#v", result)
 		}
@@ -209,8 +197,12 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	}
 
 	emptySearchOut := runOK(t, "--archive", archivePath, "--json", "search", "zzznomatchimsgcrawl")
-	if emptySearchOut != "[]\n" {
-		t.Fatalf("empty search output = %q", emptySearchOut)
+	var emptySearch searchListJSON
+	if err := json.Unmarshal([]byte(emptySearchOut), &emptySearch); err != nil {
+		t.Fatalf("empty search json = %s err=%v", emptySearchOut, err)
+	}
+	if emptySearch.Returned != 0 || emptySearch.Total != 0 || !emptySearch.Complete || len(emptySearch.Items) != 0 {
+		t.Fatalf("empty search output = %#v", emptySearch)
 	}
 }
 
@@ -223,6 +215,7 @@ func TestLimitFlagsAreExplicit(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"--archive", archivePath, "chats", "--all", "--limit", "2"},
+		{"--archive", archivePath, "chats", "--limit", "0"},
 		{"--archive", archivePath, "messages", "--chat", "1", "--all", "--limit", "2"},
 		{"--archive", archivePath, "search", "--all", "--limit", "2", "launch"},
 		{"--archive", archivePath, "messages", "--chat", "1", "--limit", "0"},
@@ -236,20 +229,20 @@ func TestLimitFlagsAreExplicit(t *testing.T) {
 	}
 
 	allMessagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--all")
-	var allMessages []map[string]json.RawMessage
+	var allMessages messageListJSON
 	if err := json.Unmarshal([]byte(allMessagesOut), &allMessages); err != nil {
 		t.Fatalf("all messages json = %s err=%v", allMessagesOut, err)
 	}
-	if len(allMessages) != 2 {
+	if allMessages.Returned != 2 || allMessages.Total != 2 || !allMessages.Complete || len(allMessages.Items) != 2 {
 		t.Fatalf("all messages = %#v", allMessages)
 	}
 
 	allSearchOut := runOK(t, "--archive", archivePath, "--json", "search", "--all", "launch")
-	var allSearch []map[string]json.RawMessage
+	var allSearch searchListJSON
 	if err := json.Unmarshal([]byte(allSearchOut), &allSearch); err != nil {
 		t.Fatalf("all search json = %s err=%v", allSearchOut, err)
 	}
-	if len(allSearch) != 2 {
+	if allSearch.Returned != 2 || allSearch.Total != 2 || !allSearch.Complete || len(allSearch.Items) != 2 {
 		t.Fatalf("all search = %#v", allSearch)
 	}
 }

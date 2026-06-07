@@ -19,12 +19,7 @@ func runOK(t *testing.T, args ...string) string {
 	return stdout.String()
 }
 
-func chatHasMessage(t *testing.T, chats []struct {
-	ChatID            string `json:"chat_id"`
-	Title             string `json:"title"`
-	MessageCount      int64  `json:"message_count"`
-	LatestMessageDate int64  `json:"latest_message_date"`
-}, chatID, title string, messages int64) bool {
+func chatHasMessage(t *testing.T, chats []chatJSONItem, chatID, title string, messages int64) bool {
 	t.Helper()
 	for _, chat := range chats {
 		if chat.ChatID == chatID && chat.Title == title && chat.MessageCount == messages {
