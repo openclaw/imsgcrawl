@@ -62,7 +62,7 @@ func printManifestText(w io.Writer, value control.Manifest) error {
 		if !ok {
 			continue
 		}
-		if _, err := fmt.Fprintf(tw, "  %s\t%s\t%s\n", name, strings.Join(command.Argv, " "), manifestCommandPurpose(name)); err != nil {
+		if _, err := fmt.Fprintf(tw, "  %s\t%s\n", name, strings.Join(command.Argv, " ")); err != nil {
 			return err
 		}
 	}
@@ -129,11 +129,11 @@ func printChatsText(w io.Writer, value chatListOutput) error {
 		return err
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(tw, "chat_id\tkind\tpeople\tmessages\tlatest\ttitle"); err != nil {
+	if _, err := fmt.Fprintln(tw, "chat\tkind\tmsgs\tlatest\tconversation"); err != nil {
 		return err
 	}
 	for _, item := range value.Items {
-		if _, err := fmt.Fprintf(tw, "%s\t%s\t%d\t%d\t%s\t%s\n", item.ChatID, item.Kind, item.ParticipantCount, item.MessageCount, formatAppleDate(item.LatestMessageDate), cleanCell(item.Title, 72)); err != nil {
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", item.ChatID, item.Kind, item.MessageCount, formatAppleDate(item.LatestMessageDate), cleanCell(chatConversation(item), 96)); err != nil {
 			return err
 		}
 	}
@@ -141,7 +141,11 @@ func printChatsText(w io.Writer, value chatListOutput) error {
 }
 
 func printMessagesText(w io.Writer, value messageListOutput) error {
-	if _, err := fmt.Fprintf(w, "Messages for chat %s: showing %d of %d, %s.\n", value.ChatID, value.Returned, value.Total, value.Order); err != nil {
+	conversation := "chat " + value.ChatID
+	if value.Chat != nil {
+		conversation = chatConversation(*value.Chat)
+	}
+	if _, err := fmt.Fprintf(w, "Messages in %s (chat %s): showing %d of %d, %s.\n", conversation, value.ChatID, value.Returned, value.Total, value.Order); err != nil {
 		return err
 	}
 	if !value.Complete {
@@ -152,21 +156,15 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 	if _, err := io.WriteString(w, "Search: imsgcrawl search QUERY\n\n"); err != nil {
 		return err
 	}
+	if _, err := fmt.Fprintf(w, "%-16s  %-22s  %s\n", "date", "from", "service"); err != nil {
+		return err
+	}
 	for _, item := range value.Items {
-		if _, err := fmt.Fprintf(w, "[%s] %s - %s", item.MessageID, formatAppleDate(item.Date), messageSpeaker(item.FromMe, item.SenderLabel)); err != nil {
-			return err
-		}
-		if item.Service != "" {
-			if _, err := fmt.Fprintf(w, " - %s", item.Service); err != nil {
-				return err
-			}
-		}
+		service := item.Service
 		if item.HasAttachments {
-			if _, err := io.WriteString(w, " - attachment(s)"); err != nil {
-				return err
-			}
+			service = strings.TrimSpace(service + " attachment(s)")
 		}
-		if _, err := io.WriteString(w, "\n"); err != nil {
+		if _, err := fmt.Fprintf(w, "%-16s  %-22s  %s\n", formatAppleDate(item.Date), cleanCell(senderName(item.FromMe, item.SenderLabel), 22), emptyDash(service)); err != nil {
 			return err
 		}
 		if err := writeIndentedBody(w, item.Text); err != nil {
@@ -191,21 +189,23 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 	if _, err := io.WriteString(w, "Open: imsgcrawl messages --chat CHAT_ID\n\n"); err != nil {
 		return err
 	}
-	for _, item := range value.Items {
-		if _, err := fmt.Fprintf(w, "[%s] chat %s - %s - %s", item.MessageID, emptyDash(item.ChatID), formatAppleDate(item.Date), messageSpeaker(item.FromMe, item.SenderLabel)); err != nil {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "#\tchat\tdate\tfrom\tconversation"); err != nil {
+		return err
+	}
+	for i, item := range value.Items {
+		if _, err := fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\n", i+1, emptyDash(item.ChatID), formatAppleDate(item.Date), senderName(item.FromMe, item.SenderLabel), cleanCell(searchConversation(item), 72)); err != nil {
 			return err
 		}
-		if item.Service != "" {
-			if _, err := fmt.Fprintf(w, " - %s", item.Service); err != nil {
-				return err
-			}
-		}
-		if item.HasAttachments {
-			if _, err := io.WriteString(w, " - attachment(s)"); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, "\n"); err != nil {
+	}
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, "\n"); err != nil {
+		return err
+	}
+	for i, item := range value.Items {
+		if _, err := fmt.Fprintf(w, "%d. %s\n", i+1, searchConversation(item)); err != nil {
 			return err
 		}
 		body := item.Text
@@ -214,6 +214,11 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 		}
 		if err := writeIndentedBody(w, body); err != nil {
 			return err
+		}
+		if item.ChatID != "" {
+			if _, err := fmt.Fprintf(w, "  Open: imsgcrawl messages --chat %s\n", item.ChatID); err != nil {
+				return err
+			}
 		}
 		if _, err := io.WriteString(w, "\n"); err != nil {
 			return err
@@ -251,36 +256,71 @@ func formatAppleDate(value int64) string {
 	return epoch.Add(time.Duration(value)).Local().Format("2006-01-02 15:04")
 }
 
-func manifestCommandPurpose(name string) string {
-	switch name {
-	case "metadata":
-		return "discover identity, capabilities, and command shape"
-	case "status":
-		return "check source/archive readiness and aggregate counts"
-	case "sync":
-		return "refresh the local source-native archive"
-	case "chats":
-		return "list archived chats"
-	case "messages":
-		return "read one chat transcript"
-	case "search":
-		return "search archived message text"
-	case "contact-export":
-		return "export narrow phone contact rows"
-	default:
-		return ""
-	}
-}
-
-func messageSpeaker(fromMe bool, label string) string {
+func senderName(fromMe bool, label string) string {
 	if fromMe {
 		return "me"
 	}
 	label = strings.TrimSpace(label)
 	if label != "" && label != "them" {
-		return "them: " + label
+		return label
 	}
 	return "them"
+}
+
+func chatConversation(item archive.ChatSummary) string {
+	title := strings.TrimSpace(item.Title)
+	people := participantPreview(item.ParticipantHandles, item.ParticipantCount)
+	if item.Kind == "group" {
+		switch {
+		case title != "" && people != "":
+			return title + " (" + people + ")"
+		case title != "":
+			return title
+		case people != "":
+			return "group with " + people
+		default:
+			return "group chat"
+		}
+	}
+	if title != "" {
+		return title
+	}
+	if people != "" {
+		return people
+	}
+	if item.ChatID != "" {
+		return "chat " + item.ChatID
+	}
+	return "unknown chat"
+}
+
+func searchConversation(item archive.SearchResult) string {
+	chat := archive.ChatSummary{
+		ChatID:             item.ChatID,
+		Title:              item.ChatTitle,
+		Kind:               item.ChatKind,
+		ParticipantCount:   item.ChatParticipantCount,
+		ParticipantHandles: item.ChatParticipantHandles,
+	}
+	return chatConversation(chat)
+}
+
+func participantPreview(handles []string, total int64) string {
+	if len(handles) == 0 {
+		if total > 0 {
+			return fmt.Sprintf("%d people", total)
+		}
+		return ""
+	}
+	limit := len(handles)
+	if limit > 4 {
+		limit = 4
+	}
+	parts := append([]string{}, handles[:limit]...)
+	if remaining := int(total) - limit; remaining > 0 {
+		parts = append(parts, fmt.Sprintf("+%d more", remaining))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func writeIndentedBody(w io.Writer, value string) error {

@@ -29,6 +29,7 @@ type chatListOutput struct {
 type messageListOutput struct {
 	listHeader
 	ChatID string               `json:"chat_id"`
+	Chat   *archive.ChatSummary `json:"chat,omitempty"`
 	Order  string               `json:"order"`
 	Items  []archive.MessageRow `json:"items"`
 }

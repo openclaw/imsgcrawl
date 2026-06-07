@@ -194,6 +194,10 @@ func (r *runtime) runMessages(args []string) error {
 		if err != nil {
 			return err
 		}
+		chat, err := st.Chat(r.ctx, *chatID)
+		if err != nil {
+			return err
+		}
 		total, err := st.CountMessages(r.ctx, *chatID)
 		if err != nil {
 			return err
@@ -205,6 +209,7 @@ func (r *runtime) runMessages(args []string) error {
 		return r.print(messageListOutput{
 			listHeader: newListHeader("messages", len(rows), total, *limit),
 			ChatID:     *chatID,
+			Chat:       &chat,
 			Order:      order,
 			Items:      rows,
 		})

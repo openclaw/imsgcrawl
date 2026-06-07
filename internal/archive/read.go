@@ -41,52 +41,6 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 	return status, nil
 }
 
-func (s *Store) Chats(ctx context.Context, limit int) ([]ChatSummary, error) {
-	limitClause := ""
-	args := []any{}
-	if limit > 0 {
-		limitClause = "limit ?"
-		args = append(args, limit)
-	}
-	rows, err := s.store.DB().QueryContext(ctx, `
-select
-  c.source_rowid,
-  c.guid,
-  coalesce(nullif(trim(c.display_name), ''), nullif(trim(c.room_name), ''), nullif(trim(c.chat_identifier), ''), c.guid) as title,
-  case
-    when count(distinct cp.handle_rowid) > 1 or nullif(trim(c.room_name), '') is not null then 'group'
-    else 'direct'
-  end as kind,
-  coalesce(c.chat_identifier, ''),
-  coalesce(c.room_name, ''),
-  coalesce(c.service_name, ''),
-  count(distinct cp.handle_rowid) as participants,
-  count(distinct cm.message_rowid) as messages,
-  coalesce(max(m.date), 0) as latest_message
-from chats c
-left join chat_participants cp on cp.chat_rowid = c.source_rowid
-left join chat_messages cm on cm.chat_rowid = c.source_rowid
-left join messages m on m.source_rowid = cm.message_rowid
-group by c.source_rowid, c.guid, c.display_name, c.room_name, c.chat_identifier, c.service_name
-order by latest_message desc, c.source_rowid desc
-`+limitClause, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	out := []ChatSummary{}
-	for rows.Next() {
-		var c ChatSummary
-		var chatID int64
-		if err := rows.Scan(&chatID, &c.GUID, &c.Title, &c.Kind, &c.ChatIdentifier, &c.RoomName, &c.Service, &c.ParticipantCount, &c.MessageCount, &c.LatestMessageDate); err != nil {
-			return nil, err
-		}
-		c.ChatID = strconv.FormatInt(chatID, 10)
-		out = append(out, c)
-	}
-	return out, rows.Err()
-}
-
 func (s *Store) CountChats(ctx context.Context) (int64, error) {
 	return countTable(ctx, s.store.DB(), "chats")
 }
@@ -167,6 +121,13 @@ select
   m.source_rowid,
   m.guid,
   coalesce(cm.chat_rowid, 0),
+  coalesce(nullif(trim(c.display_name), ''), nullif(trim(c.room_name), ''), nullif(trim(c.chat_identifier), ''), c.guid, ''),
+  case
+    when coalesce(pc.participants, 0) > 1 or nullif(trim(c.room_name), '') is not null then 'group'
+    when cm.chat_rowid is null then ''
+    else 'direct'
+  end,
+  coalesce(pc.participants, 0),
   m.handle_rowid,
   coalesce(h.handle, ''),
   m.date,
@@ -201,7 +162,7 @@ order by rank, cm.chat_rowid
 		var fromMe, hasAttachments int
 		var senderHandle, chatDisplayName string
 		var result SearchResult
-		if err := rows.Scan(&messageID, &result.GUID, &chatIDValue, &handleID, &senderHandle, &result.Date, &result.Service, &fromMe, &hasAttachments, &result.Text, &chatDisplayName, &participantCount, &result.Snippet); err != nil {
+		if err := rows.Scan(&messageID, &result.GUID, &chatIDValue, &result.ChatTitle, &result.ChatKind, &result.ChatParticipantCount, &handleID, &senderHandle, &result.Date, &result.Service, &fromMe, &hasAttachments, &result.Text, &chatDisplayName, &participantCount, &result.Snippet); err != nil {
 			return nil, err
 		}
 		result.MessageID = strconv.FormatInt(messageID, 10)
@@ -217,7 +178,20 @@ order by rank, cm.chat_rowid
 		result.SenderLabel = senderLabel(result.FromMe, senderHandle, chatDisplayName, participantCount)
 		out = append(out, result)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		if out[i].ChatID == "" {
+			continue
+		}
+		handles, err := participantHandles(ctx, s.store.DB(), out[i].ChatID)
+		if err != nil {
+			return nil, err
+		}
+		out[i].ChatParticipantHandles = handles
+	}
+	return out, nil
 }
 
 func (s *Store) CountSearch(ctx context.Context, query string) (int64, error) {

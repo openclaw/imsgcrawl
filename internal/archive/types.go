@@ -29,16 +29,17 @@ type Status struct {
 }
 
 type ChatSummary struct {
-	ChatID            string `json:"chat_id"`
-	GUID              string `json:"guid"`
-	Title             string `json:"title"`
-	Kind              string `json:"kind"`
-	ChatIdentifier    string `json:"chat_identifier,omitempty"`
-	RoomName          string `json:"room_name,omitempty"`
-	Service           string `json:"service,omitempty"`
-	ParticipantCount  int64  `json:"participant_count"`
-	MessageCount      int64  `json:"message_count"`
-	LatestMessageDate int64  `json:"latest_message_date,omitempty"`
+	ChatID             string   `json:"chat_id"`
+	GUID               string   `json:"guid"`
+	Title              string   `json:"title"`
+	Kind               string   `json:"kind"`
+	ChatIdentifier     string   `json:"chat_identifier,omitempty"`
+	RoomName           string   `json:"room_name,omitempty"`
+	Service            string   `json:"service,omitempty"`
+	ParticipantCount   int64    `json:"participant_count"`
+	ParticipantHandles []string `json:"participant_handles,omitempty"`
+	MessageCount       int64    `json:"message_count"`
+	LatestMessageDate  int64    `json:"latest_message_date,omitempty"`
 }
 
 type MessageRow struct {
@@ -56,16 +57,20 @@ type MessageRow struct {
 }
 
 type SearchResult struct {
-	MessageID      string `json:"message_id"`
-	GUID           string `json:"guid"`
-	ChatID         string `json:"chat_id,omitempty"`
-	HandleID       string `json:"handle_id,omitempty"`
-	SenderHandle   string `json:"sender_handle,omitempty"`
-	SenderLabel    string `json:"sender_label,omitempty"`
-	Date           int64  `json:"date"`
-	Service        string `json:"service,omitempty"`
-	FromMe         bool   `json:"from_me"`
-	HasAttachments bool   `json:"has_attachments,omitempty"`
-	Text           string `json:"text,omitempty"`
-	Snippet        string `json:"snippet,omitempty"`
+	MessageID              string   `json:"message_id"`
+	GUID                   string   `json:"guid"`
+	ChatID                 string   `json:"chat_id,omitempty"`
+	ChatTitle              string   `json:"chat_title,omitempty"`
+	ChatKind               string   `json:"chat_kind,omitempty"`
+	ChatParticipantCount   int64    `json:"chat_participant_count,omitempty"`
+	ChatParticipantHandles []string `json:"chat_participant_handles,omitempty"`
+	HandleID               string   `json:"handle_id,omitempty"`
+	SenderHandle           string   `json:"sender_handle,omitempty"`
+	SenderLabel            string   `json:"sender_label,omitempty"`
+	Date                   int64    `json:"date"`
+	Service                string   `json:"service,omitempty"`
+	FromMe                 bool     `json:"from_me"`
+	HasAttachments         bool     `json:"has_attachments,omitempty"`
+	Text                   string   `json:"text,omitempty"`
+	Snippet                string   `json:"snippet,omitempty"`
 }

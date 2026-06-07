@@ -19,24 +19,29 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"More: imsgcrawl chats --limit 4",
 		"All: imsgcrawl chats --all",
 		"Open: imsgcrawl messages --chat CHAT_ID",
-		"chat_id",
+		"chat",
 		"kind",
-		"people",
+		"conversation",
 		"group",
 		"Cabinet Group",
+		"+15550103",
 	)
 	assertNotSecretJSON(t, chats)
 
 	messages := runOK(t, "--archive", archivePath, "messages", "--chat", "2", "--limit", "1")
 	assertTextContains(t, messages,
-		"Messages for chat 2: showing 1 of 2, newest-first.",
+		"Messages in Most Recent Name (chat 2): showing 1 of 2, newest-first.",
 		"More: imsgcrawl messages --chat 2 --limit 2",
 		"All: imsgcrawl messages --chat 2 --all",
-		"[3]",
+		"date",
+		"from",
 		"me",
 		"latest launch note",
 		"full tail marker",
 	)
+	if strings.Contains(messages, "[3]") || strings.Contains(messages, "message_id") {
+		t.Fatalf("messages text leaked unlabeled message IDs:\n%s", messages)
+	}
 	assertNotSecretJSON(t, messages)
 
 	search := runOK(t, "--archive", archivePath, "search", "--limit", "1", "launch")
@@ -46,14 +51,20 @@ func TestArchiveTextOutputIsAgentReadable(t *testing.T) {
 		"All: imsgcrawl search --all \"launch\"",
 		"Open: imsgcrawl messages --chat CHAT_ID",
 		"launch note",
+		"conversation",
+		"Most Recent Name",
+		"Open: imsgcrawl messages --chat 2",
 	)
+	if strings.Contains(search, "[3]") || strings.Contains(search, "message_id") {
+		t.Fatalf("search text leaked unlabeled message IDs:\n%s", search)
+	}
 	assertNotSecretJSON(t, search)
 
 	directSender := runOK(t, "--archive", archivePath, "messages", "--chat", "2", "--asc", "--limit", "1")
-	assertTextContains(t, directSender, "them: Most Recent Name")
+	assertTextContains(t, directSender, "Most Recent Name")
 
 	groupSender := runOK(t, "--archive", archivePath, "messages", "--chat", "4", "--asc")
-	assertTextContains(t, groupSender, "them: +15550103")
+	assertTextContains(t, groupSender, "Cabinet Group", "+15550103")
 }
 
 func TestMetadataAndSyncTextOutputIsAgentReadable(t *testing.T) {

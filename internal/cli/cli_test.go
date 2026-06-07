@@ -149,6 +149,9 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 		if chat.ChatID == "4" && (chat.Kind != "group" || chat.ParticipantCount != 3) {
 			t.Fatalf("group chat context = %#v", chat)
 		}
+		if chat.ChatID == "4" && !hasString(chat.ParticipantHandles, "+15550103") {
+			t.Fatalf("group participant handles = %#v", chat)
+		}
 		if chat.ChatID == "2" && (chat.Kind != "direct" || chat.ParticipantCount != 1) {
 			t.Fatalf("direct chat context = %#v", chat)
 		}
@@ -161,6 +164,9 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	}
 	if messageRows.ChatID != "2" || messageRows.Order != "oldest-first" || messageRows.Returned != 2 || messageRows.Total != 2 || !messageRows.Complete {
 		t.Fatalf("message envelope = %#v", messageRows)
+	}
+	if messageRows.Chat == nil || messageRows.Chat.Title != "Most Recent Name" {
+		t.Fatalf("message chat context = %#v", messageRows.Chat)
 	}
 	if len(messageRows.Items) != 2 || messageRows.Items[0].Text != "earlier launch note" || !strings.Contains(messageRows.Items[1].Text, "full tail marker") {
 		t.Fatalf("messages = %#v", messageRows)
@@ -209,6 +215,9 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	for _, result := range results.Items {
 		if _, ok := result["snippet"]; !ok {
 			t.Fatalf("search result missing snippet = %#v", result)
+		}
+		if _, ok := result["chat_title"]; !ok {
+			t.Fatalf("search result missing chat title = %#v", result)
 		}
 		textValue, ok := result["text"]
 		if !ok {

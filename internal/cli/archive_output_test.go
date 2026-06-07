@@ -3,12 +3,13 @@ package cli
 import "encoding/json"
 
 type chatJSONItem struct {
-	ChatID            string `json:"chat_id"`
-	Title             string `json:"title"`
-	Kind              string `json:"kind"`
-	ParticipantCount  int64  `json:"participant_count"`
-	MessageCount      int64  `json:"message_count"`
-	LatestMessageDate int64  `json:"latest_message_date"`
+	ChatID             string   `json:"chat_id"`
+	Title              string   `json:"title"`
+	Kind               string   `json:"kind"`
+	ParticipantCount   int64    `json:"participant_count"`
+	ParticipantHandles []string `json:"participant_handles"`
+	MessageCount       int64    `json:"message_count"`
+	LatestMessageDate  int64    `json:"latest_message_date"`
 }
 
 type chatListJSON struct {
@@ -43,6 +44,7 @@ type messageListJSON struct {
 	Limit         int               `json:"limit"`
 	Complete      bool              `json:"complete"`
 	ChatID        string            `json:"chat_id"`
+	Chat          *chatJSONItem     `json:"chat"`
 	Order         string            `json:"order"`
 	Items         []messageJSONItem `json:"items"`
 }
