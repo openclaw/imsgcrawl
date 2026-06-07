@@ -45,6 +45,12 @@ Stable CLI output is JSON-first and should follow crawl-family commands:
 `metadata`, `status`, `contacts export`, and later `sync`, `chats`,
 `messages`, `search`, and `tui`.
 
+Agent-facing default text output is product surface, not incidental logging.
+When command names, flags, defaults, output fields, or default text formatting
+change, update the README command examples and the agent smoke/test coverage in
+the same slice. README examples must be fake/private-safe and must never be
+copied from live Messages data.
+
 The first contact-export contract is intentionally narrow:
 
 - root object key: `contacts`
