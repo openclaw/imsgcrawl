@@ -45,6 +45,19 @@ after code changes. Use the installed binary directly for clean JSON piping,
 because `devenv shell -- <command>` can print shell-manager notices before the
 command output.
 
+## Agent Smoke Transcript
+
+Use the smoke transcript when reviewing whether the CLI actually works for an
+agent. It runs the real `imsgcrawl` on `PATH`, uses a temporary archive, and
+writes exact stdout/stderr for progressive text and JSON commands to `/tmp`.
+
+```bash
+scripts/agent-smoke-transcript.sh --query "launch notes"
+```
+
+The transcript contains raw local Messages-derived output. Keep it local unless
+the user explicitly asks to share it.
+
 ## Commands
 
 ```bash
