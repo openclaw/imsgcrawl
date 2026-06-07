@@ -128,7 +128,7 @@ func printChatsText(w io.Writer, value chatListOutput) error {
 	if _, err := io.WriteString(w, "Open: imsgcrawl messages --chat CHAT_ID\n\n"); err != nil {
 		return err
 	}
-	width := textOutputWidth()
+	width := textOutputWidth(w)
 	columns := chatTextColumns(width)
 	rows := tableRows(len(value.Items))
 	for _, item := range value.Items {
@@ -159,7 +159,7 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 	if _, err := io.WriteString(w, "Search: imsgcrawl search QUERY\n\n"); err != nil {
 		return err
 	}
-	width := textOutputWidth()
+	width := textOutputWidth(w)
 	columns := messageTextColumns(width)
 	rows := tableRows(len(value.Items))
 	for _, item := range value.Items {
@@ -185,7 +185,7 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 	if _, err := io.WriteString(w, "Use --json when you need local chat IDs for follow-up commands.\n\n"); err != nil {
 		return err
 	}
-	width := textOutputWidth()
+	width := textOutputWidth(w)
 	columns := searchTextColumns(width)
 	rows := tableRows(len(value.Items))
 	for _, item := range value.Items {

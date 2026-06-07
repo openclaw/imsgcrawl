@@ -8,12 +8,12 @@ import (
 	"unicode"
 
 	"github.com/mattn/go-runewidth"
+	"golang.org/x/sys/unix"
 )
 
 const (
 	defaultTextTableWidth = 100
 	minTextTableWidth     = 72
-	maxTextTableWidth     = 120
 	textTableGap          = "  "
 )
 
@@ -23,7 +23,10 @@ type textColumn struct {
 	wrap   bool
 }
 
-func textOutputWidth() int {
+func textOutputWidth(w io.Writer) int {
+	if width := terminalOutputWidth(w); width > 0 {
+		return normalizeTextTableWidth(width)
+	}
 	raw := strings.TrimSpace(os.Getenv("COLUMNS"))
 	if raw == "" {
 		return defaultTextTableWidth
@@ -32,11 +35,24 @@ func textOutputWidth() int {
 	if err != nil {
 		return defaultTextTableWidth
 	}
+	return normalizeTextTableWidth(width)
+}
+
+func terminalOutputWidth(w io.Writer) int {
+	file, ok := w.(*os.File)
+	if !ok {
+		return 0
+	}
+	size, err := unix.IoctlGetWinsize(int(file.Fd()), unix.TIOCGWINSZ)
+	if err != nil || size == nil {
+		return 0
+	}
+	return int(size.Col)
+}
+
+func normalizeTextTableWidth(width int) int {
 	if width < minTextTableWidth {
 		return minTextTableWidth
-	}
-	if width > maxTextTableWidth {
-		return maxTextTableWidth
 	}
 	return width
 }
@@ -80,7 +96,11 @@ func renderTextRow(w io.Writer, columns []textColumn, row []string) error {
 			if line < len(cells[i]) {
 				value = cells[i][line]
 			}
-			if _, err := io.WriteString(w, padCell(value, column.width)); err != nil {
+			if i == len(columns)-1 {
+				if _, err := io.WriteString(w, value); err != nil {
+					return err
+				}
+			} else if _, err := io.WriteString(w, padCell(value, column.width)); err != nil {
 				return err
 			}
 			if i < len(columns)-1 {
