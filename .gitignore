@@ -1,0 +1,3 @@
+.devenv/
+.devenv.flake.nix
+imsgcrawl

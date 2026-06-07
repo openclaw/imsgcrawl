@@ -9,6 +9,42 @@ Messages SQLite database through a temporary read-only snapshot, syncs a small
 source-native archive, and exposes crawlkit-style metadata, status, read, search,
 and contact-export commands.
 
+## Development Shell
+
+Use `devenv` for local development. The shell provides Go, SQLite, `jq`, and a
+repo-local `GOBIN` at `.devenv/bin` on `PATH`.
+
+With `direnv` enabled in zsh, the shell activates automatically when you enter
+the repo. Activation only prepares the toolchain; build and run commands stay
+explicit.
+
+```bash
+direnv allow
+go install ./cmd/imsgcrawl
+imsgcrawl --json status
+```
+
+Without `direnv`, enter it manually:
+
+```bash
+devenv shell
+go install ./cmd/imsgcrawl
+imsgcrawl --json status
+```
+
+For one-shot checks without entering an interactive shell:
+
+```bash
+devenv shell -q -- go install ./cmd/imsgcrawl
+./.devenv/bin/imsgcrawl --json status
+```
+
+This keeps interactive testing close to the installed product: run the real
+`imsgcrawl` command, not wrapper scripts. Re-run `go install ./cmd/imsgcrawl`
+after code changes. Use the installed binary directly for clean JSON piping,
+because `devenv shell -- <command>` can print shell-manager notices before the
+command output.
+
 ## Commands
 
 ```bash
