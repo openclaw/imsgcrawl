@@ -101,34 +101,34 @@ func (s *Store) ReplaceAll(ctx context.Context, data messages.ArchiveData, synce
 			}
 		}
 		for _, h := range data.Handles {
-			if _, err := tx.ExecContext(ctx, `insert into handles(source_rowid, handle, service, uncanonicalized_id) values(?,?,?,?)`, h.SourceRowID, h.ID, h.Service, h.UncanonicalizedID); err != nil {
+			if _, err := tx.ExecContext(ctx, insertHandlesSQL, h.SourceRowID, h.ID, h.Service, h.UncanonicalizedID); err != nil {
 				return err
 			}
 		}
 		for _, c := range data.Chats {
-			_, err := tx.ExecContext(ctx, `insert into chats(source_rowid, guid, chat_identifier, service_name, display_name, room_name, is_archived) values(?,?,?,?,?,?,?)`,
+			_, err := tx.ExecContext(ctx, insertChatsSQL,
 				c.SourceRowID, c.GUID, c.ChatIdentifier, c.ServiceName, c.DisplayName, c.RoomName, boolInt(c.IsArchived))
 			if err != nil {
 				return err
 			}
 		}
 		for _, p := range data.Participants {
-			if _, err := tx.ExecContext(ctx, `insert or ignore into chat_participants(chat_rowid, handle_rowid) values(?,?)`, p.ChatRowID, p.HandleRowID); err != nil {
+			if _, err := tx.ExecContext(ctx, insertChatParticipantsSQL, p.ChatRowID, p.HandleRowID); err != nil {
 				return err
 			}
 		}
 		for _, cm := range data.ChatMessages {
-			if _, err := tx.ExecContext(ctx, `insert or ignore into chat_messages(chat_rowid, message_rowid) values(?,?)`, cm.ChatRowID, cm.MessageRowID); err != nil {
+			if _, err := tx.ExecContext(ctx, insertChatMessagesSQL, cm.ChatRowID, cm.MessageRowID); err != nil {
 				return err
 			}
 		}
 		for _, m := range data.Messages {
-			_, err := tx.ExecContext(ctx, `insert into messages(source_rowid, guid, handle_rowid, date, service, is_from_me, text, has_attachments) values(?,?,?,?,?,?,?,?)`,
+			_, err := tx.ExecContext(ctx, insertMessagesSQL,
 				m.SourceRowID, m.GUID, m.HandleRowID, m.Date, m.Service, boolInt(m.IsFromMe), m.Text, boolInt(m.HasAttachments))
 			if err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, `insert into messages_fts(source_rowid, text) values(?,?)`, m.SourceRowID, m.Text); err != nil {
+			if _, err := tx.ExecContext(ctx, insertMessagesFTSSQL, m.SourceRowID, m.Text); err != nil {
 				return err
 			}
 		}
@@ -145,7 +145,7 @@ func replaceSyncState(ctx context.Context, tx *sql.Tx, data messages.ArchiveData
 		"source_extracted_at": data.ExtractedAt.UTC().Format(time.RFC3339),
 	}
 	for key, value := range state {
-		if _, err := tx.ExecContext(ctx, `insert into sync_state(key, value) values(?, ?) on conflict(key) do update set value = excluded.value`, key, value); err != nil {
+		if _, err := tx.ExecContext(ctx, upsertSyncStateSQL, key, value); err != nil {
 			return err
 		}
 	}

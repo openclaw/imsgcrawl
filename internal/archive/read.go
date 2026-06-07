@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -37,7 +36,7 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 	if status.Messages, err = countTable(ctx, db, "messages"); err != nil {
 		return Status{}, err
 	}
-	_ = db.QueryRowContext(ctx, `select coalesce(max(date), 0) from messages`).Scan(&status.LatestMessageDate)
+	_ = db.QueryRowContext(ctx, latestMessageDateSQL).Scan(&status.LatestMessageDate)
 	return status, nil
 }
 
@@ -62,32 +61,7 @@ func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool
 		limitClause = "limit ?"
 		args = append(args, limit)
 	}
-	rows, err := s.store.DB().QueryContext(ctx, fmt.Sprintf(`
-select
-  m.source_rowid,
-  m.guid,
-  cm.chat_rowid,
-  m.handle_rowid,
-  coalesce(h.handle, ''),
-  m.date,
-  coalesce(m.service, ''),
-  m.is_from_me,
-  coalesce(m.text, ''),
-  m.has_attachments,
-  coalesce(c.display_name, ''),
-  coalesce(pc.participants, 0)
-from chat_messages cm
-join messages m on m.source_rowid = cm.message_rowid
-left join handles h on h.source_rowid = m.handle_rowid
-left join chats c on c.source_rowid = cm.chat_rowid
-left join (
-  select chat_rowid, count(distinct handle_rowid) as participants
-  from chat_participants
-  group by chat_rowid
-) pc on pc.chat_rowid = cm.chat_rowid
-where cm.chat_rowid = ?
-order by m.date %s, m.source_rowid %s
-`+limitClause, order, tie), args...)
+	rows, err := s.store.DB().QueryContext(ctx, messagesQuery(order, tie, limitClause), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +75,7 @@ func (s *Store) CountMessages(ctx context.Context, chatID string) (int64, error)
 		return 0, err
 	}
 	var count int64
-	err = s.store.DB().QueryRowContext(ctx, `select count(*) from chat_messages where chat_rowid = ?`, id).Scan(&count)
+	err = s.store.DB().QueryRowContext(ctx, countMessagesSQL, id).Scan(&count)
 	return count, err
 }
 
@@ -116,41 +90,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]SearchRe
 		limitClause = "limit ?"
 		args = append(args, limit)
 	}
-	rows, err := s.store.DB().QueryContext(ctx, `
-select
-  m.source_rowid,
-  m.guid,
-  coalesce(cm.chat_rowid, 0),
-  coalesce(nullif(trim(c.display_name), ''), nullif(trim(c.room_name), ''), nullif(trim(c.chat_identifier), ''), c.guid, ''),
-  case
-    when coalesce(pc.participants, 0) > 1 or nullif(trim(c.room_name), '') is not null then 'group'
-    when cm.chat_rowid is null then ''
-    else 'direct'
-  end,
-  coalesce(pc.participants, 0),
-  m.handle_rowid,
-  coalesce(h.handle, ''),
-  m.date,
-  coalesce(m.service, ''),
-  m.is_from_me,
-  m.has_attachments,
-  coalesce(m.text, ''),
-  coalesce(c.display_name, ''),
-  coalesce(pc.participants, 0),
-  snippet(messages_fts, 1, '[', ']', '...', 12)
-from messages_fts
-join messages m on m.source_rowid = messages_fts.source_rowid
-left join chat_messages cm on cm.message_rowid = m.source_rowid
-left join handles h on h.source_rowid = m.handle_rowid
-left join chats c on c.source_rowid = cm.chat_rowid
-left join (
-  select chat_rowid, count(distinct handle_rowid) as participants
-  from chat_participants
-  group by chat_rowid
-) pc on pc.chat_rowid = cm.chat_rowid
-where messages_fts match ?
-order by rank, cm.chat_rowid
-`+limitClause, args...)
+	rows, err := s.store.DB().QueryContext(ctx, searchQuery(limitClause), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -200,13 +140,7 @@ func (s *Store) CountSearch(ctx context.Context, query string) (int64, error) {
 		return 0, errors.New("search query is required")
 	}
 	var count int64
-	err := s.store.DB().QueryRowContext(ctx, `
-select count(*)
-from messages_fts
-join messages m on m.source_rowid = messages_fts.source_rowid
-left join chat_messages cm on cm.message_rowid = m.source_rowid
-where messages_fts match ?
-`, ftsQuery(query)).Scan(&count)
+	err := s.store.DB().QueryRowContext(ctx, countSearchSQL, ftsQuery(query)).Scan(&count)
 	return count, err
 }
 
@@ -250,7 +184,7 @@ func senderLabel(fromMe bool, handle, chatDisplayName string, participantCount i
 }
 
 func (s *Store) syncState(ctx context.Context) (map[string]string, error) {
-	rows, err := s.store.DB().QueryContext(ctx, `select key, value from sync_state`)
+	rows, err := s.store.DB().QueryContext(ctx, syncStateSQL)
 	if err != nil {
 		return nil, err
 	}

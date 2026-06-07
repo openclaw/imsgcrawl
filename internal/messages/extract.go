@@ -103,7 +103,7 @@ func ExtractArchive(ctx context.Context, path string) (ArchiveData, error) {
 func requireArchiveTables(ctx context.Context, db *sql.DB) error {
 	for _, table := range []string{"chat_message_join", "message_attachment_join"} {
 		var name string
-		err := db.QueryRowContext(ctx, `select name from sqlite_master where type='table' and name = ?`, table).Scan(&name)
+		err := db.QueryRowContext(ctx, tableExistsSQL, table).Scan(&name)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return errors.New("messages database is missing table " + table)
@@ -115,7 +115,7 @@ func requireArchiveTables(ctx context.Context, db *sql.DB) error {
 }
 
 func extractHandles(ctx context.Context, db *sql.DB) ([]Handle, error) {
-	rows, err := db.QueryContext(ctx, `select rowid, id, service, coalesce(uncanonicalized_id, '') from handle order by rowid`)
+	rows, err := db.QueryContext(ctx, extractHandlesSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func extractHandles(ctx context.Context, db *sql.DB) ([]Handle, error) {
 }
 
 func extractChats(ctx context.Context, db *sql.DB) ([]Chat, error) {
-	rows, err := db.QueryContext(ctx, `select rowid, guid, coalesce(chat_identifier, ''), coalesce(service_name, ''), coalesce(display_name, ''), coalesce(room_name, ''), coalesce(is_archived, 0) from chat order by rowid`)
+	rows, err := db.QueryContext(ctx, extractChatsSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func extractChats(ctx context.Context, db *sql.DB) ([]Chat, error) {
 }
 
 func extractParticipants(ctx context.Context, db *sql.DB) ([]Participant, error) {
-	rows, err := db.QueryContext(ctx, `select chat_id, handle_id from chat_handle_join order by chat_id, handle_id`)
+	rows, err := db.QueryContext(ctx, extractParticipantsSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func extractParticipants(ctx context.Context, db *sql.DB) ([]Participant, error)
 }
 
 func extractChatMessages(ctx context.Context, db *sql.DB) ([]ChatMessage, error) {
-	rows, err := db.QueryContext(ctx, `select chat_id, message_id from chat_message_join order by chat_id, message_id`)
+	rows, err := db.QueryContext(ctx, extractChatMessagesSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -185,20 +185,7 @@ func extractChatMessages(ctx context.Context, db *sql.DB) ([]ChatMessage, error)
 }
 
 func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
-	rows, err := db.QueryContext(ctx, `
-select
-  m.rowid,
-  m.guid,
-  coalesce(m.handle_id, 0),
-  coalesce(m.date, 0),
-  coalesce(m.service, ''),
-  coalesce(m.is_from_me, 0),
-  coalesce(m.text, ''),
-  coalesce(m.attributedBody, x''),
-  case when exists(select 1 from message_attachment_join maj where maj.message_id = m.rowid) then 1 else 0 end
-from message m
-order by m.rowid
-`)
+	rows, err := db.QueryContext(ctx, extractMessagesSQL)
 	if err != nil {
 		return nil, err
 	}

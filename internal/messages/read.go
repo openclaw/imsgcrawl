@@ -157,7 +157,7 @@ func openSnapshot(ctx context.Context, path string) (*store.Store, error) {
 func requireMessagesTables(ctx context.Context, db *sql.DB) error {
 	for _, table := range []string{"handle", "chat", "chat_handle_join", "message"} {
 		var name string
-		err := db.QueryRowContext(ctx, `select name from sqlite_master where type='table' and name = ?`, table).Scan(&name)
+		err := db.QueryRowContext(ctx, tableExistsSQL, table).Scan(&name)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return errors.New("messages database is missing table " + table)
@@ -177,7 +177,7 @@ func countTable(ctx context.Context, db *sql.DB, table string) (int64, error) {
 }
 
 func handleKindCounts(ctx context.Context, db *sql.DB) (phones, emails, other int64, err error) {
-	rows, err := db.QueryContext(ctx, `select id from handle`)
+	rows, err := db.QueryContext(ctx, handleIDsSQL)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -203,27 +203,7 @@ func handleKindCounts(ctx context.Context, db *sql.DB) (phones, emails, other in
 }
 
 func phoneHandleRows(ctx context.Context, db *sql.DB) ([]handleRow, error) {
-	rows, err := db.QueryContext(ctx, `
-select
-  h.id,
-  h.service,
-  coalesce((
-    select nullif(trim(c.display_name), '')
-    from chat_handle_join chj
-    join chat c on c.rowid = chj.chat_id
-    where chj.handle_id = h.rowid
-      and (select count(*) from chat_handle_join x where x.chat_id = chj.chat_id) = 1
-      and nullif(trim(c.display_name), '') is not null
-    order by c.rowid desc
-    limit 1
-  ), '') as display_name,
-  count(m.rowid) as messages,
-  coalesce(max(m.date), 0) as last_message
-from handle h
-left join message m on m.handle_id = h.rowid
-where h.id not like '%@%'
-group by h.rowid, h.id, h.service
-`)
+	rows, err := db.QueryContext(ctx, phoneHandleRowsSQL)
 	if err != nil {
 		return nil, err
 	}
