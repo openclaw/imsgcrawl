@@ -90,6 +90,16 @@ func pullJSONFlag(args []string) (bool, []string) {
 	return jsonOut, out
 }
 
+func flagPassed(fs *flag.FlagSet, name string) bool {
+	passed := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			passed = true
+		}
+	})
+	return passed
+}
+
 func (r *runtime) dispatch(args []string) error {
 	switch args[0] {
 	case "metadata":
@@ -192,9 +202,9 @@ Usage:
   imsgcrawl [--json] [--db PATH] metadata
   imsgcrawl [--json] [--db PATH] [--archive PATH] sync
   imsgcrawl [--json] [--db PATH] [--archive PATH] status
-  imsgcrawl [--json] [--archive PATH] chats [--limit N]
-  imsgcrawl [--json] [--archive PATH] messages --chat ID [--limit N] [--asc]
-  imsgcrawl [--json] [--archive PATH] search [--limit N] QUERY
+  imsgcrawl [--json] [--archive PATH] chats [--limit N|--all]
+  imsgcrawl [--json] [--archive PATH] messages --chat ID [--limit N|--all] [--asc]
+  imsgcrawl [--json] [--archive PATH] search [--limit N|--all] QUERY
   imsgcrawl [--json] [--db PATH] contacts export
   imsgcrawl --version
 `)

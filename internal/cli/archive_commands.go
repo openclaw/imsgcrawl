@@ -119,12 +119,19 @@ func setStatusState(out *statusOutput, archiveProblem bool) {
 func (r *runtime) runChats(args []string) error {
 	fs := flag.NewFlagSet("imsgcrawl chats", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	limit := fs.Int("limit", 20, "")
+	limit := fs.Int("limit", 0, "")
+	all := fs.Bool("all", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
 	}
 	if fs.NArg() != 0 {
 		return usageErr(errors.New("chats takes flags only"))
+	}
+	if *limit < 0 {
+		return usageErr(errors.New("chats --limit must be >= 0"))
+	}
+	if *all && flagPassed(fs, "limit") {
+		return usageErr(errors.New("use either --all or --limit"))
 	}
 	return r.withArchive(func(st *archive.Store) error {
 		chats, err := st.Chats(r.ctx, *limit)
@@ -140,6 +147,7 @@ func (r *runtime) runMessages(args []string) error {
 	fs.SetOutput(io.Discard)
 	chatID := fs.String("chat", "", "")
 	limit := fs.Int("limit", 50, "")
+	all := fs.Bool("all", false, "")
 	asc := fs.Bool("asc", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
@@ -149,6 +157,15 @@ func (r *runtime) runMessages(args []string) error {
 	}
 	if strings.TrimSpace(*chatID) == "" {
 		return usageErr(errors.New("messages requires --chat"))
+	}
+	if *limit <= 0 {
+		return usageErr(errors.New("messages --limit must be positive"))
+	}
+	if *all && flagPassed(fs, "limit") {
+		return usageErr(errors.New("use either --all or --limit"))
+	}
+	if *all {
+		*limit = 0
 	}
 	return r.withArchive(func(st *archive.Store) error {
 		rows, err := st.Messages(r.ctx, *chatID, *limit, *asc)
@@ -163,12 +180,22 @@ func (r *runtime) runSearch(args []string) error {
 	fs := flag.NewFlagSet("imsgcrawl search", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	limit := fs.Int("limit", 20, "")
+	all := fs.Bool("all", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
 	}
 	query := strings.TrimSpace(strings.Join(fs.Args(), " "))
 	if query == "" {
 		return usageErr(errors.New("search query is required"))
+	}
+	if *limit <= 0 {
+		return usageErr(errors.New("search --limit must be positive"))
+	}
+	if *all && flagPassed(fs, "limit") {
+		return usageErr(errors.New("use either --all or --limit"))
+	}
+	if *all {
+		*limit = 0
 	}
 	return r.withArchive(func(st *archive.Store) error {
 		results, err := st.Search(r.ctx, query, *limit)

@@ -51,9 +51,12 @@ command output.
 imsgcrawl --json metadata
 imsgcrawl --json status
 imsgcrawl --json sync
+imsgcrawl --json chats
 imsgcrawl --json chats --limit 20
 imsgcrawl --json messages --chat 123 --limit 50
+imsgcrawl --json messages --chat 123 --all
 imsgcrawl --json search --limit 20 "launch notes"
+imsgcrawl --json search --all "launch notes"
 imsgcrawl --json contacts export
 ```
 

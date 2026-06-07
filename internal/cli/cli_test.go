@@ -116,6 +116,28 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	allChatsOut := runOK(t, "--archive", archivePath, "--json", "chats")
+	var allChats []struct {
+		ChatID string `json:"chat_id"`
+	}
+	if err := json.Unmarshal([]byte(allChatsOut), &allChats); err != nil {
+		t.Fatalf("all chats json = %s err=%v", allChatsOut, err)
+	}
+	if len(allChats) != 4 {
+		t.Fatalf("bare chats should return all chats, got %#v", allChats)
+	}
+
+	limitedChatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "2")
+	var limitedChats []struct {
+		ChatID string `json:"chat_id"`
+	}
+	if err := json.Unmarshal([]byte(limitedChatsOut), &limitedChats); err != nil {
+		t.Fatalf("limited chats json = %s err=%v", limitedChatsOut, err)
+	}
+	if len(limitedChats) != 2 {
+		t.Fatalf("limited chats = %#v", limitedChats)
+	}
+
 	chatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "4")
 	var chats []struct {
 		ChatID            string `json:"chat_id"`
@@ -189,6 +211,46 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	emptySearchOut := runOK(t, "--archive", archivePath, "--json", "search", "zzznomatchimsgcrawl")
 	if emptySearchOut != "[]\n" {
 		t.Fatalf("empty search output = %q", emptySearchOut)
+	}
+}
+
+func TestLimitFlagsAreExplicit(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "chat.db")
+	archivePath := filepath.Join(dir, "archive.db")
+	createMessagesFixture(t, dbPath)
+	_ = runOK(t, "--db", dbPath, "--archive", archivePath, "--json", "sync")
+
+	for _, args := range [][]string{
+		{"--archive", archivePath, "chats", "--all", "--limit", "2"},
+		{"--archive", archivePath, "messages", "--chat", "1", "--all", "--limit", "2"},
+		{"--archive", archivePath, "search", "--all", "--limit", "2", "launch"},
+		{"--archive", archivePath, "messages", "--chat", "1", "--limit", "0"},
+		{"--archive", archivePath, "search", "--limit", "0", "launch"},
+	} {
+		var stdout, stderr bytes.Buffer
+		err := Run(context.Background(), args, &stdout, &stderr)
+		if err == nil || ExitCode(err) != 2 {
+			t.Fatalf("Run(%v) expected usage error, got err=%v stdout=%s stderr=%s", args, err, stdout.String(), stderr.String())
+		}
+	}
+
+	allMessagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--all")
+	var allMessages []map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(allMessagesOut), &allMessages); err != nil {
+		t.Fatalf("all messages json = %s err=%v", allMessagesOut, err)
+	}
+	if len(allMessages) != 2 {
+		t.Fatalf("all messages = %#v", allMessages)
+	}
+
+	allSearchOut := runOK(t, "--archive", archivePath, "--json", "search", "--all", "launch")
+	var allSearch []map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(allSearchOut), &allSearch); err != nil {
+		t.Fatalf("all search json = %s err=%v", allSearchOut, err)
+	}
+	if len(allSearch) != 2 {
+		t.Fatalf("all search = %#v", allSearch)
 	}
 }
 

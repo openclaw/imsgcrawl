@@ -42,8 +42,11 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 }
 
 func (s *Store) Chats(ctx context.Context, limit int) ([]ChatSummary, error) {
-	if limit <= 0 {
-		limit = 20
+	limitClause := ""
+	args := []any{}
+	if limit > 0 {
+		limitClause = "limit ?"
+		args = append(args, limit)
 	}
 	rows, err := s.store.DB().QueryContext(ctx, `
 select
@@ -61,7 +64,7 @@ left join chat_messages cm on cm.chat_rowid = c.source_rowid
 left join messages m on m.source_rowid = cm.message_rowid
 group by c.source_rowid, c.guid, c.display_name, c.chat_identifier, c.service_name
 order by latest_message desc, c.source_rowid desc
-limit ?`, limit)
+`+limitClause, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +87,17 @@ func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool
 	if err != nil {
 		return nil, err
 	}
-	if limit <= 0 {
-		limit = 50
-	}
 	order := "desc"
 	tie := "desc"
 	if asc {
 		order = "asc"
 		tie = "asc"
+	}
+	limitClause := ""
+	args := []any{id}
+	if limit > 0 {
+		limitClause = "limit ?"
+		args = append(args, limit)
 	}
 	rows, err := s.store.DB().QueryContext(ctx, fmt.Sprintf(`
 select
@@ -108,7 +114,7 @@ from chat_messages cm
 join messages m on m.source_rowid = cm.message_rowid
 where cm.chat_rowid = ?
 order by m.date %s, m.source_rowid %s
-limit ?`, order, tie), id, limit)
+`+limitClause, order, tie), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +127,11 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]SearchRe
 	if query == "" {
 		return nil, errors.New("search query is required")
 	}
-	if limit <= 0 {
-		limit = 20
+	limitClause := ""
+	args := []any{ftsQuery(query)}
+	if limit > 0 {
+		limitClause = "limit ?"
+		args = append(args, limit)
 	}
 	rows, err := s.store.DB().QueryContext(ctx, `
 select
@@ -140,7 +149,7 @@ join messages m on m.source_rowid = messages_fts.source_rowid
 left join chat_messages cm on cm.message_rowid = m.source_rowid
 where messages_fts match ?
 order by rank, cm.chat_rowid
-limit ?`, ftsQuery(query), limit)
+`+limitClause, args...)
 	if err != nil {
 		return nil, err
 	}
