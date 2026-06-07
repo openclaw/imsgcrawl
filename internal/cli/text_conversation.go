@@ -53,24 +53,52 @@ func messageTextColumns(width int) []textColumn {
 }
 
 func searchTextColumns(width int) []textColumn {
-	dateWidth := 16
-	fromWidth := 16
-	conversationWidth := 30
-	if width < 100 {
-		fromWidth = 14
-		conversationWidth = 28
-	}
-	if width < 80 {
-		fromWidth = 12
-		conversationWidth = 22
-	}
-	textWidth := textColumnWidth(width, dateWidth, fromWidth, conversationWidth)
+	dateWidth, fromWidth, conversationWidth, textWidth := searchColumnWidths(width)
 	return []textColumn{
 		{header: "date", width: dateWidth},
-		{header: "from", width: fromWidth},
-		{header: "conversation", width: conversationWidth},
+		{header: "from", width: fromWidth, wrap: true},
+		{header: "conversation", width: conversationWidth, wrap: true},
 		{header: "text", width: textWidth, wrap: true},
 	}
+}
+
+func searchColumnWidths(width int) (dateWidth int, fromWidth int, conversationWidth int, textWidth int) {
+	dateWidth = 16
+	gaps := 3 * len(textTableGap)
+	remaining := width - dateWidth - gaps
+	if remaining < 50 {
+		remaining = 50
+	}
+	fromWidth = clampWidth(remaining/4, 12, 24)
+	conversationWidth = clampWidth(remaining/3, 18, 52)
+	textWidth = remaining - fromWidth - conversationWidth
+	if textWidth < 20 {
+		needed := 20 - textWidth
+		conversationReduction := minInt(needed, conversationWidth-18)
+		conversationWidth -= conversationReduction
+		needed -= conversationReduction
+		fromReduction := minInt(needed, fromWidth-12)
+		fromWidth -= fromReduction
+		textWidth = remaining - fromWidth - conversationWidth
+	}
+	return dateWidth, fromWidth, conversationWidth, textWidth
+}
+
+func clampWidth(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func messageService(service string, hasAttachments bool) string {

@@ -124,7 +124,8 @@ Search "candles budget": showing 1 of 1.
 Use --json when you need local chat IDs for follow-up commands.
 
 date              from  conversation                  text
-2026-06-07 09:10  me    Cabinet Group (Elon, JD...    The candles budget is CORRECT.
+2026-06-07 09:10  me    Cabinet Group (Elon, JD,      The candles budget is CORRECT.
+                         Xi, +1 more)
 ```
 
 ### Contacts
