@@ -32,7 +32,7 @@ func (r *runtime) print(v any) error {
 		return printMessagesText(r.stdout, value)
 	case searchListOutput:
 		return printSearchText(r.stdout, value)
-	case contactExport:
+	case control.ContactExport:
 		return printContactsText(r.stdout, value)
 	default:
 		return enc.Encode(v)
@@ -198,7 +198,7 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 	return renderTextTable(w, columns, rows)
 }
 
-func printContactsText(w io.Writer, value contactExport) error {
+func printContactsText(w io.Writer, value control.ContactExport) error {
 	for _, contact := range value.Contacts {
 		_, err := fmt.Fprintf(w, "%s\t%s\n", contact.DisplayName, strings.Join(contact.PhoneNumbers, ","))
 		if err != nil {

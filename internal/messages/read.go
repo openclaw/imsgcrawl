@@ -28,11 +28,6 @@ type StatusReport struct {
 	Warnings      []string        `json:"warnings,omitempty"`
 }
 
-type ExportedContact struct {
-	DisplayName  string   `json:"display_name"`
-	PhoneNumbers []string `json:"phone_numbers"`
-}
-
 type handleRow struct {
 	ID          string
 	Service     string
@@ -88,7 +83,7 @@ func Status(ctx context.Context, path string) (StatusReport, error) {
 	return report, nil
 }
 
-func ExportContacts(ctx context.Context, path string) ([]ExportedContact, error) {
+func ExportContacts(ctx context.Context, path string) ([]control.Contact, error) {
 	snap, err := SnapshotPath(path)
 	if err != nil {
 		return nil, err
@@ -127,7 +122,7 @@ func ExportContacts(ctx context.Context, path string) ([]ExportedContact, error)
 		}
 		return order[i] < order[j]
 	})
-	out := make([]ExportedContact, 0, len(order))
+	out := make([]control.Contact, 0, len(order))
 	for _, key := range order {
 		row := byPhone[key]
 		name := strings.TrimSpace(row.DisplayName)
@@ -137,7 +132,7 @@ func ExportContacts(ctx context.Context, path string) ([]ExportedContact, error)
 		if name == "" {
 			continue
 		}
-		out = append(out, ExportedContact{DisplayName: name, PhoneNumbers: []string{strings.TrimSpace(row.ID)}})
+		out = append(out, control.Contact{DisplayName: name, PhoneNumbers: []string{strings.TrimSpace(row.ID)}})
 	}
 	return out, nil
 }

@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	ckstore "github.com/openclaw/crawlkit/store"
 )
 
 func countTable(ctx context.Context, db *sql.DB, table string) (int64, error) {
@@ -26,12 +28,11 @@ func parseID(value, label string) (int64, error) {
 }
 
 func ftsQuery(query string) string {
-	terms := strings.Fields(query)
-	quoted := make([]string, 0, len(terms))
-	for _, term := range terms {
-		quoted = append(quoted, `"`+strings.ReplaceAll(term, `"`, `""`)+`"`)
+	value, err := ckstore.FTS5Terms(query, "")
+	if err != nil {
+		return ckstore.FTS5Phrase(query)
 	}
-	return strings.Join(quoted, " ")
+	return value
 }
 
 func boolInt(value bool) int {
