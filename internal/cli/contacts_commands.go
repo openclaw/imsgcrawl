@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/openclaw/crawlkit/control"
 	"github.com/openclaw/imsgcrawl/internal/messages"
 )
-
-type contactExport struct {
-	Contacts []messages.ExportedContact `json:"contacts"`
-}
 
 func (r *runtime) runContacts(args []string) error {
 	if hasHelpFlag(args) {
@@ -44,5 +41,9 @@ func (r *runtime) runContactsExport(args []string) error {
 	if err != nil {
 		return err
 	}
-	return r.print(contactExport{Contacts: contacts})
+	export := control.ContactExport{Contacts: contacts}
+	if err := control.ValidateContactExport(export); err != nil {
+		return err
+	}
+	return r.print(export)
 }
