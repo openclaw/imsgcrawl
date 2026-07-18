@@ -1,0 +1,35 @@
+version: 2
+
+project_name: imsgcrawl
+
+changelog:
+  disable: true
+
+builds:
+  - id: imsgcrawl
+    main: ./cmd/imsgcrawl
+    binary: imsgcrawl
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/openclaw/imsgcrawl/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+
+archives:
+  - ids:
+      - imsgcrawl
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt

@@ -192,7 +192,7 @@ go install ./cmd/imsgcrawl
 imsgcrawl status
 ```
 
-Without Nix, install Go `1.26.2` or newer, then use the normal Go workflow:
+Without Nix, install Go `1.26.5` or newer, then use the normal Go workflow:
 
 ```bash
 go test ./...

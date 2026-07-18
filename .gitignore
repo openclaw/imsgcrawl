@@ -1,3 +1,4 @@
 .devenv/
 .devenv.flake.nix
 imsgcrawl
+dist/
