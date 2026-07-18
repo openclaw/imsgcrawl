@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-07-18
+
+### Highlights
+
+- Publish platform archives with clean, stable filenames that match the crawler family convention
+
+### Release engineering
+
+- Place GoReleaser binaries in target-only output directories so the unified packager omits internal build IDs and architecture variant suffixes from asset names
 
 ## 0.1.0 - 2026-07-18
 

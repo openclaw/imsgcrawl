@@ -8,7 +8,8 @@ changelog:
 builds:
   - id: imsgcrawl
     main: ./cmd/imsgcrawl
-    binary: imsgcrawl
+    binary: "{{ .Os }}_{{ .Arch }}/imsgcrawl"
+    no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     flags:
@@ -27,9 +28,9 @@ archives:
     formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    strip_binary_directory: true
     files:
       - README.md
-      - LICENSE
 
 checksum:
   name_template: checksums.txt
