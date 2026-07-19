@@ -68,6 +68,43 @@ insert into message values(1, 'legacy-guid', 0, 1, 'iMessage', 0, 'legacy', x'')
 	}
 }
 
+func TestExtractMessagesMarksAttributedBodyAsCurrent(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.Exec(`create table message (
+rowid integer primary key, guid text, handle_id integer, date integer, service text,
+is_from_me integer, text text, attributedBody blob, date_edited integer,
+date_retracted integer, message_summary_info blob
+); create table message_attachment_join(message_id integer, attachment_id integer);`); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := plist.Marshal(map[string]any{
+		"otr": map[string]any{
+			"0": map[string]any{"lo": int64(0), "le": int64(1)},
+			"1": map[string]any{"lo": int64(1), "le": int64(4)},
+		},
+		"ec": map[string]any{"0": []any{map[string]any{"d": int64(2), "t": makeStreamtypedAttributedBody("LONGER")}}},
+	}, plist.BinaryFormat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`insert into message values(1, 'edited-guid', 0, 1, 'iMessage', 0, '', ?, 2, 0, ?)`,
+		makeStreamtypedAttributedBody("LONGERtail"), summary); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := extractMessages(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Text != "LONGERtail" || !rows[0].TextAvailable || !rows[0].TextIsCurrent {
+		t.Fatalf("current attributed body = %#v", rows)
+	}
+}
+
 func TestExtractMessagesHidesFallbackForMalformedKnownEdit(t *testing.T) {
 	ctx := context.Background()
 	db, err := sql.Open("sqlite", ":memory:")

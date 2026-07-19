@@ -59,6 +59,7 @@ type Message struct {
 	IsFromMe               bool
 	Text                   string
 	TextAvailable          bool
+	TextIsCurrent          bool
 	HasAttachments         bool
 	DateEdited             int64
 	DateRetracted          int64
@@ -225,7 +226,10 @@ func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
 			return nil, err
 		}
 		if m.Text == "" {
-			m.Text = decodeAttributedBody(attributedBody)
+			if text, ok := decodeAttributedBodyValue(attributedBody); ok {
+				m.Text = text
+				m.TextIsCurrent = true
+			}
 		}
 		m.TextAvailable = true
 		m.IsFromMe = fromMe != 0
@@ -289,6 +293,10 @@ func (m *Message) ApplyRevisionData() {
 	m.RevisionAt = revision.RevisionAt
 	m.RevisionIdentity = revision.Identity
 	if m.HasEdits || m.HasUnsentParts {
+		if m.TextIsCurrent {
+			m.TextAvailable = true
+			return
+		}
 		text, available := reconstructCurrentText(root, m.Text)
 		m.TextAvailable = available
 		if available {

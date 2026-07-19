@@ -102,6 +102,7 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 	tests := []struct {
 		name          string
 		text          string
+		textIsCurrent bool
 		root          map[string]any
 		wantText      string
 		wantAvailable bool
@@ -161,6 +162,52 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 			wantAvailable: true,
 		},
 		{
+			name:          "current attributed body uses adjusted offset",
+			text:          "LONGERtail",
+			textIsCurrent: true,
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(1)},
+					"1": map[string]any{"lo": int64(1), "le": int64(4)},
+				},
+				"ec": map[string]any{"0": []any{map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("LONGER")}}},
+			},
+			wantText:      "LONGERtail",
+			wantAvailable: true,
+		},
+		{
+			name:          "current attributed body omits unsent part",
+			text:          "keep stay",
+			textIsCurrent: true,
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(4)},
+					"1": map[string]any{"lo": int64(4), "le": int64(10)},
+					"2": map[string]any{"lo": int64(14), "le": int64(5)},
+				},
+				"rp": []any{int64(1)},
+			},
+			wantText:      "keep stay",
+			wantAvailable: true,
+		},
+		{
+			name: "equal length edits use original baseline",
+			text: "ABCD",
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(1)},
+					"1": map[string]any{"lo": int64(1), "le": int64(1)},
+					"2": map[string]any{"lo": int64(2), "le": int64(2)},
+				},
+				"ec": map[string]any{
+					"0": []any{map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("AB")}},
+					"2": []any{map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("D")}},
+				},
+			},
+			wantText:      "ABBD",
+			wantAvailable: true,
+		},
+		{
 			name: "utf16 part ranges",
 			text: "A😀B removed",
 			root: map[string]any{
@@ -200,7 +247,7 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			message := Message{Text: test.text, TextAvailable: true, RevisionData: data}
+			message := Message{Text: test.text, TextAvailable: true, TextIsCurrent: test.textIsCurrent, RevisionData: data}
 			message.ApplyRevisionData()
 			if message.Text != test.wantText || message.TextAvailable != test.wantAvailable {
 				t.Fatalf("current text = %q available=%v, want %q available=%v", message.Text, message.TextAvailable, test.wantText, test.wantAvailable)
