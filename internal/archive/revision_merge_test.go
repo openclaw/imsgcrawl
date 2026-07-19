@@ -68,7 +68,7 @@ func TestMergePreservesUnavailableRevisionMetadata(t *testing.T) {
 	}
 }
 
-func TestMergePreservesTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
+func TestMergeClearsTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
 	ctx := context.Background()
 	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
 	if err != nil {
@@ -105,11 +105,14 @@ func TestMergePreservesTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
 	if err := st.store.DB().QueryRow(`select text from messages where guid='message-one'`).Scan(&text); err != nil {
 		t.Fatal(err)
 	}
-	if text != "known current text" {
-		t.Fatalf("merged current text = %q", text)
+	if text != "" {
+		t.Fatalf("unsafe previous revision text = %q", text)
 	}
 	if got := scalar(t, st.store.DB(), `select count(*) from messages_fts where messages_fts match 'withdrawn'`); got != 0 {
 		t.Fatalf("withdrawn fallback indexed: %d", got)
+	}
+	if got := scalar(t, st.store.DB(), `select count(*) from messages_fts where messages_fts match 'known'`); got != 0 {
+		t.Fatalf("previous revision indexed: %d", got)
 	}
 }
 

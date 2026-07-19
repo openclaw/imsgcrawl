@@ -273,6 +273,11 @@ func revisionAwareMessagesQuery(ctx context.Context, db *sql.DB) (string, revisi
 }
 
 func (m *Message) ApplyRevisionData() {
+	// date_edited confirms that the source fallback may no longer be current.
+	// Only expose it again after reconstructing the latest revision.
+	if m.DateEdited > 0 {
+		m.TextAvailable = false
+	}
 	root, ok := messageSummaryRoot(m.RevisionData)
 	if !ok {
 		return

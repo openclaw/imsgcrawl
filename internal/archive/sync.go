@@ -77,7 +77,7 @@ func (s *Store) Import(ctx context.Context, data messages.ArchiveData, syncedAt 
 					return err
 				}
 			}
-			if (message.HasEdits || message.HasUnsentParts) && !message.TextAvailable {
+			if (message.DateEdited > 0 || message.HasEdits || message.HasUnsentParts) && !message.TextAvailable {
 				message.Text = ""
 			}
 			deletedAt, reason := messageTombstone(message, syncedAt)
@@ -168,7 +168,7 @@ from messages where source_rowid = ?`, message.SourceRowID).Scan(&existingText, 
 		message.RevisionData = revisionData
 	}
 	message.ApplyRevisionData()
-	if !message.TextAvailable && message.HasUnsentParts {
+	if !message.TextAvailable && (message.DateEdited > 0 || message.HasEdits || message.HasUnsentParts) {
 		message.Text = ""
 		message.TextAvailable = true
 	} else if !message.TextAvailable {
