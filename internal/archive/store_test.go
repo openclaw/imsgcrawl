@@ -154,6 +154,7 @@ func TestPartialUnsendRemainsActiveAndSummaryMetadataIsNotARevision(t *testing.T
 		t.Fatalf("ordinary event retained unrelated revision data: %x", revisionData)
 	}
 	data.Messages[0].HasUnsentParts = true
+	data.Messages[0].DateRetracted = 804_340_800_000_000_000
 	data.Messages[0].RevisionData = []byte("partial-unsend")
 	if err := st.Import(ctx, data, now.Add(2*time.Minute), false); err != nil {
 		t.Fatal(err)
@@ -167,6 +168,12 @@ func TestPartialUnsendRemainsActiveAndSummaryMetadataIsNotARevision(t *testing.T
 	}
 	if got := scalar(t, st.store.DB(), `select count(*) from message_events where event_type = 'message_partial_unsent'`); got != 1 {
 		t.Fatalf("partial unsend events = %d", got)
+	}
+	if got := scalar(t, st.store.DB(), `select revision_at from message_events where event_type = 'message_partial_unsent'`); got != data.Messages[0].DateRetracted {
+		t.Fatalf("partial unsend revision time = %d", got)
+	}
+	if got := scalar(t, st.store.DB(), `select count(*) from messages_fts where messages_fts match 'original'`); got != 1 {
+		t.Fatalf("partial unsend remaining text search hits = %d", got)
 	}
 }
 

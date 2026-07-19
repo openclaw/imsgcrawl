@@ -81,10 +81,12 @@ event_key, message_guid, source_rowid, event_type, revision_at, payload_json, ob
 
 func messageEventType(message messages.Message) (string, int64) {
 	switch {
-	case message.DateRetracted > 0 || message.FullyUnsent:
+	case message.FullyUnsent:
 		return "message_unsent", max(message.DateRetracted, message.RevisionAt)
 	case message.HasUnsentParts:
-		return "message_partial_unsent", max(message.DateEdited, message.RevisionAt)
+		return "message_partial_unsent", max(message.DateEdited, message.DateRetracted, message.RevisionAt)
+	case message.DateRetracted > 0:
+		return "message_unsent", max(message.DateRetracted, message.RevisionAt)
 	case message.DateEdited > 0 || message.HasEdits:
 		return "message_edited", max(message.DateEdited, message.RevisionAt)
 	default:

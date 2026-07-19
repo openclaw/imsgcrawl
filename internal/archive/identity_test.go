@@ -78,6 +78,39 @@ func TestRestoreAllowsSourceIdentityRemapping(t *testing.T) {
 	}
 }
 
+func TestMergeAdoptsLegacyRelativeSourcePathOnce(t *testing.T) {
+	ctx := context.Background()
+	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	data := fixtureArchiveData()
+	if err := st.Import(ctx, data, now, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.store.DB().Exec(`delete from sync_state where key='source_identity';
+update sync_state set value='relative/chat.db' where key='source_path'`); err != nil {
+		t.Fatal(err)
+	}
+	unrelated := data
+	unrelated.SourcePath = "/other/database.db"
+	err = st.Import(ctx, unrelated, now.Add(30*time.Second), false)
+	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
+		t.Fatalf("unrelated source was adopted: %v", err)
+	}
+	data.SourcePath = "/new-working-directory/relative/chat.db"
+	if err := st.Import(ctx, data, now.Add(time.Minute), false); err != nil {
+		t.Fatalf("legacy relative path was not adopted: %v", err)
+	}
+	data.SourcePath = "/another-source/chat.db"
+	err = st.Import(ctx, data, now.Add(2*time.Minute), false)
+	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
+		t.Fatalf("adopted source identity was not enforced: %v", err)
+	}
+}
+
 func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
 	ctx := context.Background()
 	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))

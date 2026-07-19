@@ -258,6 +258,9 @@ where exists(select 1 from messages where messages.source_rowid = chat_messages.
 }
 
 func messageTombstone(message messages.Message, syncedAt time.Time) (*string, string) {
+	if message.HasUnsentParts && !message.FullyUnsent {
+		return nil, ""
+	}
 	if message.DateRetracted <= 0 && !message.FullyUnsent {
 		return nil, ""
 	}
