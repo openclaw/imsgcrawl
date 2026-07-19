@@ -65,7 +65,7 @@ func OpenExisting(ctx context.Context, path string) (*Store, error) {
 	}
 	if version < schemaVersion {
 		_ = st.Close()
-		return nil, fmt.Errorf("archive schema version %d needs migration; run imsgcrawl sync", version)
+		return Open(ctx, path)
 	}
 	if version > schemaVersion {
 		_ = st.Close()

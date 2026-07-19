@@ -192,7 +192,7 @@ insert into messages(source_rowid, guid, date, text) values(7, 'legacy-guid', 42
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	st, err := Open(ctx, path)
+	st, err := OpenExisting(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -134,6 +134,20 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 			wantAvailable: true,
 		},
 		{
+			name: "malformed unsent part is ignored",
+			text: "keep withdrawn",
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(4)},
+					"1": map[string]any{"lo": int64(-1), "le": int64(99)},
+				},
+				"ec": map[string]any{"1": []any{map[string]any{"d": int64(1), "t": []byte("invalid")}}},
+				"rp": []any{int64(1)},
+			},
+			wantText:      "keep",
+			wantAvailable: true,
+		},
+		{
 			name: "unchanged part keeps original offset",
 			text: "xtail",
 			root: map[string]any{
@@ -174,7 +188,7 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 			text: "safe fallback",
 			root: map[string]any{
 				"otr": map[string]any{"0": map[string]any{"lo": int64(-1), "le": int64(1)}},
-				"rp":  []any{int64(0)},
+				"ec":  map[string]any{"0": []any{map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("edit")}}},
 			},
 			wantText:      "safe fallback",
 			wantAvailable: false,

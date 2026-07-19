@@ -108,6 +108,9 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 	var current strings.Builder
 	for index := 0; index < len(parts); index++ {
 		key := strconv.Itoa(index)
+		if unsent[int64(index)] {
+			continue
+		}
 		part, ok := stringMap(parts[key])
 		if !ok {
 			return "", false
@@ -122,12 +125,7 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 			if !ok {
 				return "", false
 			}
-			if !unsent[int64(index)] {
-				current.WriteString(text)
-			}
-			continue
-		}
-		if unsent[int64(index)] {
+			current.WriteString(text)
 			continue
 		}
 		if offset < 0 || offset > int64(len(originalUnits)) || length > int64(len(originalUnits))-offset {
