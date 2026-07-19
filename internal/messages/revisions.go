@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
+	"unicode/utf16"
 
 	"howett.net/plist"
 )
@@ -18,13 +20,25 @@ type revisionState struct {
 }
 
 func parseMessageSummaryInfo(data []byte) revisionState {
-	if len(data) == 0 {
+	root, ok := messageSummaryRoot(data)
+	if !ok {
 		return revisionState{}
+	}
+	return parseMessageSummaryRoot(root)
+}
+
+func messageSummaryRoot(data []byte) (map[string]any, bool) {
+	if len(data) == 0 {
+		return nil, false
 	}
 	var root map[string]any
 	if _, err := plist.Unmarshal(data, &root); err != nil {
-		return revisionState{}
+		return nil, false
 	}
+	return root, true
+}
+
+func parseMessageSummaryRoot(root map[string]any) revisionState {
 	parts, ok := stringMap(root["otr"])
 	if !ok || len(parts) == 0 {
 		return revisionState{}
@@ -75,6 +89,73 @@ func parseMessageSummaryInfo(data []byte) revisionState {
 		}
 	}
 	return state
+}
+
+func reconstructCurrentText(root map[string]any, original string) (string, bool) {
+	parts, ok := stringMap(root["otr"])
+	if !ok || len(parts) == 0 {
+		return "", false
+	}
+	edits, _ := stringMap(root["ec"])
+	unsentValues, _ := root["rp"].([]any)
+	unsent := make(map[int64]bool, len(unsentValues))
+	for _, value := range unsentValues {
+		if index, ok := integer(value); ok {
+			unsent[index] = true
+		}
+	}
+	originalUnits := utf16.Encode([]rune(original))
+	var current strings.Builder
+	var offsetDelta int64
+	for index := 0; index < len(parts); index++ {
+		key := strconv.Itoa(index)
+		part, ok := stringMap(parts[key])
+		if !ok {
+			return "", false
+		}
+		offset, offsetOK := integer(part["lo"])
+		length, lengthOK := integer(part["le"])
+		if !offsetOK || !lengthOK || offset < 0 || length < 0 {
+			return "", false
+		}
+		if editEvents, edited := edits[key]; edited {
+			text, ok := latestEditedPartText(editEvents)
+			if !ok {
+				return "", false
+			}
+			currentLength := int64(len(utf16.Encode([]rune(text))))
+			offsetDelta += currentLength - length
+			if !unsent[int64(index)] {
+				current.WriteString(text)
+			}
+			continue
+		}
+		if unsent[int64(index)] {
+			continue
+		}
+		currentOffset := offset + offsetDelta
+		if currentOffset < 0 || currentOffset > int64(len(originalUnits)) || length > int64(len(originalUnits))-currentOffset {
+			return "", false
+		}
+		current.WriteString(string(utf16.Decode(originalUnits[currentOffset : currentOffset+length])))
+	}
+	return current.String(), true
+}
+
+func latestEditedPartText(value any) (string, bool) {
+	events, ok := value.([]any)
+	if !ok || len(events) == 0 {
+		return "", false
+	}
+	fields, ok := stringMap(events[len(events)-1])
+	if !ok {
+		return "", false
+	}
+	data, ok := fields["t"].([]byte)
+	if !ok {
+		return "", false
+	}
+	return decodeAttributedBodyValue(data)
 }
 
 func stringMap(value any) (map[string]any, bool) {

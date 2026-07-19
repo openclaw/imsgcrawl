@@ -297,8 +297,8 @@ func fixtureArchiveData() messages.ArchiveData {
 		Participants:     []messages.Participant{{ChatRowID: 1, HandleRowID: 1}, {ChatRowID: 2, HandleRowID: 2}},
 		ChatMessages:     []messages.ChatMessage{{ChatRowID: 1, MessageRowID: 1}, {ChatRowID: 2, MessageRowID: 2}},
 		Messages: []messages.Message{
-			{SourceRowID: 1, GUID: "message-one", HandleRowID: 1, Date: 10, Text: "original text", DateEditedAvailable: true, DateRetractedAvailable: true, RevisionDataAvailable: true},
-			{SourceRowID: 2, GUID: "message-two", HandleRowID: 2, Date: 20, Text: "destination only", DateEditedAvailable: true, DateRetractedAvailable: true, RevisionDataAvailable: true},
+			{SourceRowID: 1, GUID: "message-one", HandleRowID: 1, Date: 10, Text: "original text", TextAvailable: true, DateEditedAvailable: true, DateRetractedAvailable: true, RevisionDataAvailable: true},
+			{SourceRowID: 2, GUID: "message-two", HandleRowID: 2, Date: 20, Text: "destination only", TextAvailable: true, DateEditedAvailable: true, DateRetractedAvailable: true, RevisionDataAvailable: true},
 		},
 	}
 }

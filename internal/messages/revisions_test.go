@@ -97,3 +97,90 @@ func TestParseMessageSummaryInfo(t *testing.T) {
 		t.Fatalf("unrelated metadata changed revision identity: %q != %q", first.Identity, second.Identity)
 	}
 }
+
+func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
+	tests := []struct {
+		name          string
+		text          string
+		root          map[string]any
+		wantText      string
+		wantAvailable bool
+	}{
+		{
+			name: "latest edit body",
+			text: "original",
+			root: map[string]any{
+				"otr": map[string]any{"0": map[string]any{"lo": int64(0), "le": int64(8)}},
+				"ec": map[string]any{"0": []any{
+					map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("first edit")},
+					map[string]any{"d": int64(2), "t": makeStreamtypedAttributedBody("current edit")},
+				}},
+			},
+			wantText:      "current edit",
+			wantAvailable: true,
+		},
+		{
+			name: "partial unsend removes part",
+			text: "keep withdrawn stay",
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(4)},
+					"1": map[string]any{"lo": int64(4), "le": int64(10)},
+					"2": map[string]any{"lo": int64(14), "le": int64(5)},
+				},
+				"rp": []any{int64(1)},
+			},
+			wantText:      "keep stay",
+			wantAvailable: true,
+		},
+		{
+			name: "edit length shifts unchanged part",
+			text: "LONGERtail",
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(1)},
+					"1": map[string]any{"lo": int64(1), "le": int64(4)},
+				},
+				"ec": map[string]any{"0": []any{map[string]any{"d": int64(1), "t": makeStreamtypedAttributedBody("LONGER")}}},
+			},
+			wantText:      "LONGERtail",
+			wantAvailable: true,
+		},
+		{
+			name: "utf16 part ranges",
+			text: "A😀B removed",
+			root: map[string]any{
+				"otr": map[string]any{
+					"0": map[string]any{"lo": int64(0), "le": int64(4)},
+					"1": map[string]any{"lo": int64(4), "le": int64(8)},
+				},
+				"rp": []any{int64(1)},
+			},
+			wantText:      "A😀B",
+			wantAvailable: true,
+		},
+		{
+			name: "undecodable edit body",
+			text: "do not index fallback",
+			root: map[string]any{
+				"otr": map[string]any{"0": map[string]any{"lo": int64(0), "le": int64(21)}},
+				"ec":  map[string]any{"0": []any{map[string]any{"d": int64(1), "t": []byte("invalid")}}},
+			},
+			wantText:      "do not index fallback",
+			wantAvailable: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data, err := plist.Marshal(test.root, plist.BinaryFormat)
+			if err != nil {
+				t.Fatal(err)
+			}
+			message := Message{Text: test.text, TextAvailable: true, RevisionData: data}
+			message.ApplyRevisionData()
+			if message.Text != test.wantText || message.TextAvailable != test.wantAvailable {
+				t.Fatalf("current text = %q available=%v, want %q available=%v", message.Text, message.TextAvailable, test.wantText, test.wantAvailable)
+			}
+		})
+	}
+}

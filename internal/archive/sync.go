@@ -77,6 +77,9 @@ func (s *Store) Import(ctx context.Context, data messages.ArchiveData, syncedAt 
 					return err
 				}
 			}
+			if (message.HasEdits || message.HasUnsentParts) && !message.TextAvailable {
+				message.Text = ""
+			}
 			deletedAt, reason := messageTombstone(message, syncedAt)
 			messageKey, messageIdentity := "guid", any(message.GUID)
 			if strings.TrimSpace(message.GUID) == "" {
@@ -141,13 +144,14 @@ select source_rowid, coalesce(text, '') from messages where deleted_at is null`)
 }
 
 func hydrateUnavailableRevisionMetadata(ctx context.Context, tx *sql.Tx, message messages.Message) (messages.Message, error) {
-	if message.DateEditedAvailable && message.DateRetractedAvailable && message.RevisionDataAvailable {
+	if message.TextAvailable && message.DateEditedAvailable && message.DateRetractedAvailable && message.RevisionDataAvailable {
 		return message, nil
 	}
+	var existingText string
 	var dateEdited, dateRetracted int64
 	var revisionData []byte
-	err := tx.QueryRowContext(ctx, `select date_edited, date_retracted, revision_data
-from messages where source_rowid = ?`, message.SourceRowID).Scan(&dateEdited, &dateRetracted, &revisionData)
+	err := tx.QueryRowContext(ctx, `select coalesce(text, ''), date_edited, date_retracted, revision_data
+from messages where source_rowid = ?`, message.SourceRowID).Scan(&existingText, &dateEdited, &dateRetracted, &revisionData)
 	if errors.Is(err, sql.ErrNoRows) {
 		return message, nil
 	}
@@ -164,6 +168,13 @@ from messages where source_rowid = ?`, message.SourceRowID).Scan(&dateEdited, &d
 		message.RevisionData = revisionData
 	}
 	message.ApplyRevisionData()
+	if !message.TextAvailable && message.HasUnsentParts {
+		message.Text = ""
+		message.TextAvailable = true
+	} else if !message.TextAvailable {
+		message.Text = existingText
+		message.TextAvailable = true
+	}
 	return message, nil
 }
 

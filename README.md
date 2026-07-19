@@ -89,8 +89,10 @@ their participant/message relationships carry `deleted_at` and
 are append-only events with deterministic identities. The current row also
 keeps Apple's edit/retraction timestamps and raw `message_summary_info`; its
 per-part `ec` edit history and `rp` retractions distinguish partial changes from
-fully unsent messages. Unrelated summary metadata does not create revisions,
-and an ordinary incomplete snapshot is never treated as deletion.
+fully unsent messages. The archive reconstructs the current visible body from
+the latest edited parts while omitting retracted parts, so withdrawn text is not
+indexed. Unrelated summary metadata does not create revisions, and an ordinary
+incomplete snapshot is never treated as deletion.
 
 ### Chats
 

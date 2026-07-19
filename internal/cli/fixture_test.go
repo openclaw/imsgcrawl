@@ -117,7 +117,7 @@ func makeFixtureAttributedBody(text string) []byte {
 	out = append(out, "\x12NSAttributedString"...)
 	out = append(out, "\x00\x84\x84\x08NSObject\x00\x85\x92\x84\x84\x84\x08NSString\x01\x94"...)
 	out = append(out, "\x84\x01+"...)
-	out = append(out, 0x81, byte(len(text)), 0x92, 0x00)
+	out = append(out, byte(len(text)))
 	out = append(out, text...)
 	out = append(out, 0x86)
 	return out

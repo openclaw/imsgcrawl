@@ -58,6 +58,7 @@ type Message struct {
 	Service                string
 	IsFromMe               bool
 	Text                   string
+	TextAvailable          bool
 	HasAttachments         bool
 	DateEdited             int64
 	DateRetracted          int64
@@ -226,6 +227,7 @@ func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
 		if m.Text == "" {
 			m.Text = decodeAttributedBody(attributedBody)
 		}
+		m.TextAvailable = true
 		m.IsFromMe = fromMe != 0
 		m.HasAttachments = hasAttachments != 0
 		m.DateEditedAvailable = availability.DateEdited
@@ -271,12 +273,23 @@ func revisionAwareMessagesQuery(ctx context.Context, db *sql.DB) (string, revisi
 }
 
 func (m *Message) ApplyRevisionData() {
-	revision := parseMessageSummaryInfo(m.RevisionData)
+	root, ok := messageSummaryRoot(m.RevisionData)
+	if !ok {
+		return
+	}
+	revision := parseMessageSummaryRoot(root)
 	m.HasEdits = revision.HasEdits
 	m.HasUnsentParts = revision.HasUnsentParts
 	m.FullyUnsent = revision.FullyUnsent
 	m.RevisionAt = revision.RevisionAt
 	m.RevisionIdentity = revision.Identity
+	if m.HasEdits || m.HasUnsentParts {
+		text, available := reconstructCurrentText(root, m.Text)
+		m.TextAvailable = available
+		if available {
+			m.Text = text
+		}
+	}
 }
 
 func tableColumns(ctx context.Context, db *sql.DB, table string) (map[string]bool, error) {
