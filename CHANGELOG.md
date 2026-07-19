@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Archive and retention
+
+- Make sync merge by default, bind archives to one Messages source, add explicit `sync --restore` replacement, and retain source-attributed tombstones for chats, messages, and subordinate relationships
+- Preserve iMessage edits and unsends as stable append-only message events, reconstruct current non-retracted message bodies, and keep tombstoned rows out of normal reads and search
+- Migrate v0.1 archives in place to the revision-aware tombstone schema
+
+### Dependencies
+
+- Add `howett.net/plist` to distinguish iMessage per-part edit and unsend metadata in binary property lists
+
 ## 0.1.1 - 2026-07-18
 
 ### Highlights

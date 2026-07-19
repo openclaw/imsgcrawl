@@ -7,44 +7,68 @@ import (
 )
 
 func decodeAttributedBody(body []byte) string {
+	text, _ := decodeAttributedBodyValue(body)
+	return text
+}
+
+func decodeAttributedBodyValue(body []byte) (string, bool) {
 	if !bytes.HasPrefix(body, []byte("\x04\x0bstreamtyped")) {
-		return ""
+		return "", false
 	}
 	marker := []byte("\x84\x01+")
 	idx := bytes.Index(body, marker)
 	if idx < 0 {
-		return ""
+		return "", false
 	}
 	pos := idx + len(marker)
 	if pos >= len(body) {
-		return ""
+		return "", false
 	}
-	textLen, pos := decodeStreamtypedLength(body, pos)
-	if textLen <= 0 || pos >= len(body) {
-		return ""
+	textLen, pos, ok := decodeStreamtypedLength(body, pos)
+	if !ok || textLen < 0 || pos > len(body) {
+		return "", false
 	}
 	for pos < len(body) && (body[pos] == 0x00 || body[pos] == 0x92 || (body[pos] >= 0x80 && body[pos] <= 0xbf)) {
 		pos++
 	}
-	end := min(pos+textLen, len(body))
-	return cleanDecodedText(body[pos:end])
+	if pos > len(body) || textLen > len(body)-pos {
+		return "", false
+	}
+	end := pos + textLen
+	return cleanDecodedText(body[pos:end]), true
 }
 
-func decodeStreamtypedLength(body []byte, pos int) (int, int) {
+func decodeStreamtypedLength(body []byte, pos int) (int, int, bool) {
+	if pos >= len(body) {
+		return 0, pos, false
+	}
 	first := body[pos]
-	if first&0x80 == 0 {
-		return int(first), pos + 1
+	if first <= 0x7f {
+		return int(first), pos + 1, true
 	}
-	width := int(first & 0x7f)
+	var width int
+	switch first {
+	case 0x81:
+		width = 2
+	case 0x82:
+		width = 4
+	case 0x83:
+		width = 8
+	default:
+		return 0, pos, false
+	}
 	pos++
-	if width <= 0 || pos+width > len(body) {
-		return 0, pos
+	if pos+width > len(body) {
+		return 0, pos, false
 	}
-	var n int
+	var n uint64
 	for i := 0; i < width; i++ {
-		n |= int(body[pos+i]) << (8 * i)
+		n |= uint64(body[pos+i]) << (8 * i)
 	}
-	return n, pos + width
+	if n > uint64(^uint(0)>>1) {
+		return 0, pos, false
+	}
+	return int(n), pos + width, true
 }
 
 func cleanDecodedText(raw []byte) string {

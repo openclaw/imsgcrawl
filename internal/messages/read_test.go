@@ -1,6 +1,9 @@
 package messages
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNormalizePhoneMatchesClawdexShape(t *testing.T) {
 	for _, tc := range []struct {
@@ -41,6 +44,7 @@ func TestDecodeAttributedBody(t *testing.T) {
 	}{
 		{name: "short", text: "Hello world"},
 		{name: "long", text: "This is a longer message that exercises the multi-byte length path in the streamtyped attributedBody decoder."},
+		{name: "extended length", text: strings.Repeat("x", 300)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := decodeAttributedBody(makeStreamtypedAttributedBody(tc.text))
@@ -51,14 +55,35 @@ func TestDecodeAttributedBody(t *testing.T) {
 	}
 }
 
+func TestDecodeAttributedBodyRejectsOverflowLength(t *testing.T) {
+	body := []byte("\x04\x0bstreamtyped\x84\x01+")
+	body = append(body, 0x83, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f)
+	if text, ok := decodeAttributedBodyValue(body); ok || text != "" {
+		t.Fatalf("overflow body decoded as %q, available=%v", text, ok)
+	}
+}
+
 func makeStreamtypedAttributedBody(text string) []byte {
 	var out []byte
 	out = append(out, "\x04\x0bstreamtyped\x81\xe8\x03\x84\x01@\x84\x84\x84"...)
 	out = append(out, "\x12NSAttributedString"...)
 	out = append(out, "\x00\x84\x84\x08NSObject\x00\x85\x92\x84\x84\x84\x08NSString\x01\x94"...)
 	out = append(out, "\x84\x01+"...)
-	out = append(out, 0x81, byte(len(text)), 0x92, 0x00)
+	out = appendTestStreamtypedLength(out, len(text))
 	out = append(out, text...)
 	out = append(out, 0x86)
 	return out
+}
+
+func appendTestStreamtypedLength(out []byte, length int) []byte {
+	switch {
+	case length <= 0x7f:
+		return append(out, byte(length))
+	case length <= 0xffff:
+		return append(out, 0x81, byte(length), byte(length>>8))
+	case uint64(length) <= 0xffffffff:
+		return append(out, 0x82, byte(length), byte(length>>8), byte(length>>16), byte(length>>24))
+	default:
+		return append(out, 0x83, byte(length), byte(length>>8), byte(length>>16), byte(length>>24), byte(length>>32), byte(length>>40), byte(length>>48), byte(length>>56))
+	}
 }

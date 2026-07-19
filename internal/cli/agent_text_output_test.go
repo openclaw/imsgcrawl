@@ -93,13 +93,17 @@ func TestMetadataAndSyncTextOutputIsAgentReadable(t *testing.T) {
 
 	syncOut := runOK(t, "--db", dbPath, "--archive", archivePath, "sync")
 	assertTextContains(t, syncOut,
-		"Sync complete",
+		"Sync complete (merge)",
 		"Messages source:",
 		"Local archive:",
 		"Chats: 4",
 		"Messages: 4",
 	)
 	assertNotSecretJSON(t, syncOut)
+
+	restoreOut := runOK(t, "--db", dbPath, "--archive", archivePath, "sync", "--restore")
+	assertTextContains(t, restoreOut, "Sync complete (restore)", "Imported rows:")
+	assertNotSecretJSON(t, restoreOut)
 }
 
 func TestDisplayMessageTextNormalizesAttachmentPlaceholder(t *testing.T) {

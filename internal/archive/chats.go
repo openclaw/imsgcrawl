@@ -35,7 +35,7 @@ func (s *Store) Chat(ctx context.Context, chatID string) (ChatSummary, error) {
 		return ChatSummary{}, err
 	}
 	db := s.store.DB()
-	rows, err := db.QueryContext(ctx, chatSummaryQuery("where c.source_rowid = ?"), id)
+	rows, err := db.QueryContext(ctx, chatSummaryQuery("and c.source_rowid = ?"), id)
 	if err != nil {
 		return ChatSummary{}, err
 	}

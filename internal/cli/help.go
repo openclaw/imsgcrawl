@@ -11,7 +11,7 @@ func printUsage(w io.Writer) {
 
 Usage:
   imsgcrawl [--json] [--db PATH] metadata
-  imsgcrawl [--json] [--db PATH] [--archive PATH] sync
+  imsgcrawl [--json] [--db PATH] [--archive PATH] sync [--restore]
   imsgcrawl [--json] [--db PATH] [--archive PATH] status
   imsgcrawl [--json] [--archive PATH] chats [--limit N|--all]
   imsgcrawl [--json] [--archive PATH] messages --chat ID [--limit N|--all] [--asc]
@@ -48,9 +48,12 @@ Print crawlkit control metadata.
 `)
 	case "sync":
 		_, _ = fmt.Fprint(w, `Usage:
-  imsgcrawl [--json] [--db PATH] [--archive PATH] sync
+  imsgcrawl [--json] [--db PATH] [--archive PATH] sync [--restore]
 
-Refresh the local imsgcrawl archive from the Messages database.
+Merge the Messages database into the local archive.
+
+Flags:
+  --restore   Replace the archive with the current source snapshot.
 `)
 	case "status":
 		_, _ = fmt.Fprint(w, `Usage:

@@ -11,9 +11,9 @@ import (
 	ckstore "github.com/openclaw/crawlkit/store"
 )
 
-func countTable(ctx context.Context, db *sql.DB, table string) (int64, error) {
+func countActive(ctx context.Context, db *sql.DB, table string) (int64, error) {
 	var count int64
-	if err := db.QueryRowContext(ctx, `select count(*) from `+table).Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, `select count(*) from `+table+` where deleted_at is null`).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil

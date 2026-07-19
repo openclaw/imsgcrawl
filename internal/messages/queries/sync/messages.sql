@@ -15,6 +15,9 @@ select
     )
     then 1
     else 0
-  end
+  end,
+  {{DATE_EDITED}},
+  {{DATE_RETRACTED}},
+  {{MESSAGE_SUMMARY_INFO}}
 from message m
 order by m.rowid
