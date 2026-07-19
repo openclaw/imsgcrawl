@@ -156,6 +156,7 @@ func TestPartialUnsendRemainsActiveAndSummaryMetadataIsNotARevision(t *testing.T
 	data.Messages[0].HasUnsentParts = true
 	data.Messages[0].DateRetracted = 804_340_800_000_000_000
 	data.Messages[0].RevisionData = []byte("partial-unsend")
+	data.DeletedMessages = []string{"message-one"}
 	if err := st.Import(ctx, data, now.Add(2*time.Minute), false); err != nil {
 		t.Fatal(err)
 	}

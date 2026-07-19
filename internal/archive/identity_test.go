@@ -183,6 +183,38 @@ func TestRestoreRejectsDuplicateIncomingGUIDsWithoutChangingArchive(t *testing.T
 	}
 }
 
+func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name   string
+		insert string
+	}{
+		{name: "message", insert: `insert into messages(source_rowid, guid) values(99, 'message-one')`},
+		{name: "chat", insert: `insert into chats(source_rowid, guid) values(99, 'chat-one')`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = st.Close() }()
+			data := fixtureArchiveData()
+			if err := st.Import(ctx, data, now, false); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := st.store.DB().Exec(test.insert); err != nil {
+				t.Fatal(err)
+			}
+			err = st.Import(ctx, data, now.Add(time.Minute), false)
+			if err == nil || !strings.Contains(err.Error(), "sync --restore") {
+				t.Fatalf("duplicate %s merge error = %v", test.name, err)
+			}
+		})
+	}
+}
+
 func TestSyntheticTombstoneCollisionAllocatesAnotherRow(t *testing.T) {
 	ctx := context.Background()
 	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))

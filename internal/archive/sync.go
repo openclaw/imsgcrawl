@@ -187,7 +187,7 @@ func liveMessageGUIDs(rows []messages.Message) map[string]bool {
 	out := make(map[string]bool, len(rows))
 	for _, message := range rows {
 		guid := strings.TrimSpace(message.GUID)
-		if guid != "" && message.DateRetracted <= 0 && !message.FullyUnsent {
+		if guid != "" && !messageIsFullyUnsent(message) {
 			out[guid] = true
 		}
 	}
@@ -258,10 +258,7 @@ where exists(select 1 from messages where messages.source_rowid = chat_messages.
 }
 
 func messageTombstone(message messages.Message, syncedAt time.Time) (*string, string) {
-	if message.HasUnsentParts && !message.FullyUnsent {
-		return nil, ""
-	}
-	if message.DateRetracted <= 0 && !message.FullyUnsent {
+	if !messageIsFullyUnsent(message) {
 		return nil, ""
 	}
 	value := appleTime(message.DateRetracted)
@@ -270,6 +267,10 @@ func messageTombstone(message messages.Message, syncedAt time.Time) (*string, st
 	}
 	formatted := value.Format(time.RFC3339Nano)
 	return &formatted, deletionSourceUnsent
+}
+
+func messageIsFullyUnsent(message messages.Message) bool {
+	return message.FullyUnsent || (message.DateRetracted > 0 && !message.HasUnsentParts)
 }
 
 func appleTime(value int64) time.Time {

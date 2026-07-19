@@ -81,7 +81,7 @@ event_key, message_guid, source_rowid, event_type, revision_at, payload_json, ob
 
 func messageEventType(message messages.Message) (string, int64) {
 	switch {
-	case message.FullyUnsent:
+	case messageIsFullyUnsent(message):
 		return "message_unsent", max(message.DateRetracted, message.RevisionAt)
 	case message.HasUnsentParts:
 		return "message_partial_unsent", max(message.DateEdited, message.DateRetracted, message.RevisionAt)

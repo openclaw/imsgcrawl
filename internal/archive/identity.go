@@ -63,17 +63,14 @@ func validateStableRow(ctx context.Context, tx *sql.Tx, entity, table string, so
 		return nil
 	}
 	var existingRowID int64
-	err = tx.QueryRowContext(ctx, `select source_rowid from `+table+` where `+key+` = ? and source_rowid > 0 order by source_rowid limit 1`, stableID).Scan(&existingRowID)
+	err = tx.QueryRowContext(ctx, `select source_rowid from `+table+` where `+key+` = ? and source_rowid > 0 and source_rowid <> ? order by source_rowid limit 1`, stableID, sourceRowID).Scan(&existingRowID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if existingRowID != sourceRowID {
-		return fmt.Errorf("source %s %q moved from rowid %d to %d; run imsgcrawl sync --restore to replace the archive", entity, stableID, existingRowID, sourceRowID)
-	}
-	return nil
+	return fmt.Errorf("source %s %q moved from rowid %d to %d; run imsgcrawl sync --restore to replace the archive", entity, stableID, existingRowID, sourceRowID)
 }
 
 func validateIncomingIdentities(data messages.ArchiveData) error {
