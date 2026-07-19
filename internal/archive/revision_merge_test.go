@@ -165,6 +165,47 @@ func TestMergeClearsTextWhenPartialUnsendCannotBeReconstructed(t *testing.T) {
 	}
 }
 
+func TestMergeDoesNotReapplyAvailableRevisionData(t *testing.T) {
+	ctx := context.Background()
+	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	incoming := fixtureArchiveData()
+	incoming.Messages = incoming.Messages[:1]
+	incoming.ChatMessages = incoming.ChatMessages[:1]
+	incoming.Messages[0].Text = "xtail"
+	incoming.Messages[0].DateEditedAvailable = false
+	incoming.Messages[0].RevisionData, err = plist.Marshal(map[string]any{
+		"otr": map[string]any{
+			"0": map[string]any{"lo": int64(0), "le": int64(1)},
+			"1": map[string]any{"lo": int64(1), "le": int64(4)},
+		},
+		"ec": map[string]any{"0": []any{map[string]any{"d": int64(123), "t": revisionTypedStream("LONGER")}}},
+	}, plist.BinaryFormat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	incoming.Messages[0].ApplyRevisionData()
+	for index := 0; index < 2; index++ {
+		if err := st.Import(ctx, incoming, now.Add(time.Duration(index)*time.Minute), false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var text string
+	if err := st.store.DB().QueryRow(`select text from messages where guid='message-one'`).Scan(&text); err != nil {
+		t.Fatal(err)
+	}
+	if text != "LONGERtail" {
+		t.Fatalf("repeated merge current text = %q", text)
+	}
+	if got := scalar(t, st.store.DB(), `select count(*) from message_events`); got != 1 {
+		t.Fatalf("repeated merge event count = %d", got)
+	}
+}
+
 func revisionTypedStream(text string) []byte {
 	out := []byte("\x04\x0bstreamtyped\x81\xe8\x03\x84\x01@\x84\x84\x84\x12NSAttributedString\x00\x84\x84\x08NSObject\x00\x85\x92\x84\x84\x84\x08NSString\x01\x94\x84\x01+")
 	if len(text) <= 0x7f {

@@ -164,10 +164,15 @@ from messages where source_rowid = ?`, message.SourceRowID).Scan(&existingText, 
 	if !message.DateRetractedAvailable {
 		message.DateRetracted = dateRetracted
 	}
+	revisionDataHydrated := !message.RevisionDataAvailable
 	if !message.RevisionDataAvailable {
 		message.RevisionData = revisionData
 	}
-	message.ApplyRevisionData()
+	if revisionDataHydrated {
+		message.ApplyRevisionData()
+	} else if message.DateEdited > 0 && !message.HasEdits && !message.HasUnsentParts {
+		message.TextAvailable = false
+	}
 	if !message.TextAvailable && (message.DateEdited > 0 || message.HasEdits || message.HasUnsentParts) {
 		message.Text = ""
 		message.TextAvailable = true
