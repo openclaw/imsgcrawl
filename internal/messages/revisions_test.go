@@ -134,8 +134,8 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 			wantAvailable: true,
 		},
 		{
-			name: "edit length shifts unchanged part",
-			text: "LONGERtail",
+			name: "unchanged part keeps original offset",
+			text: "xtail",
 			root: map[string]any{
 				"otr": map[string]any{
 					"0": map[string]any{"lo": int64(0), "le": int64(1)},
@@ -167,6 +167,16 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 				"ec":  map[string]any{"0": []any{map[string]any{"d": int64(1), "t": []byte("invalid")}}},
 			},
 			wantText:      "do not index fallback",
+			wantAvailable: false,
+		},
+		{
+			name: "negative original offset",
+			text: "safe fallback",
+			root: map[string]any{
+				"otr": map[string]any{"0": map[string]any{"lo": int64(-1), "le": int64(1)}},
+				"rp":  []any{int64(0)},
+			},
+			wantText:      "safe fallback",
 			wantAvailable: false,
 		},
 	}

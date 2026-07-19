@@ -106,7 +106,6 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 	}
 	originalUnits := utf16.Encode([]rune(original))
 	var current strings.Builder
-	var offsetDelta int64
 	for index := 0; index < len(parts); index++ {
 		key := strconv.Itoa(index)
 		part, ok := stringMap(parts[key])
@@ -123,8 +122,6 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 			if !ok {
 				return "", false
 			}
-			currentLength := int64(len(utf16.Encode([]rune(text))))
-			offsetDelta += currentLength - length
 			if !unsent[int64(index)] {
 				current.WriteString(text)
 			}
@@ -133,11 +130,10 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 		if unsent[int64(index)] {
 			continue
 		}
-		currentOffset := offset + offsetDelta
-		if currentOffset < 0 || currentOffset > int64(len(originalUnits)) || length > int64(len(originalUnits))-currentOffset {
+		if offset < 0 || offset > int64(len(originalUnits)) || length > int64(len(originalUnits))-offset {
 			return "", false
 		}
-		current.WriteString(string(utf16.Decode(originalUnits[currentOffset : currentOffset+length])))
+		current.WriteString(string(utf16.Decode(originalUnits[offset : offset+length])))
 	}
 	return current.String(), true
 }
