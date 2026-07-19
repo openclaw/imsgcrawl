@@ -59,9 +59,11 @@ func createMessagesFixture(t *testing.T, path string) {
 		`create table handle (ROWID integer primary key, id text not null, service text not null, uncanonicalized_id text)`,
 		`create table chat (ROWID integer primary key, guid text not null, display_name text, chat_identifier text, service_name text, room_name text, is_archived integer)`,
 		`create table chat_handle_join (chat_id integer, handle_id integer)`,
-		`create table message (ROWID integer primary key, guid text not null, handle_id integer, date integer, service text, is_from_me integer, text text, attributedBody blob)`,
+		`create table message (ROWID integer primary key, guid text not null, handle_id integer, date integer, service text, is_from_me integer, text text, attributedBody blob, date_edited integer default 0, date_retracted integer default 0, message_summary_info blob)`,
 		`create table chat_message_join (chat_id integer, message_id integer)`,
 		`create table message_attachment_join (message_id integer, attachment_id integer)`,
+		`create table sync_deleted_messages (guid text)`,
+		`create table sync_deleted_chats (guid text)`,
 	}
 	for _, stmt := range schema {
 		if _, err := db.Exec(stmt); err != nil {

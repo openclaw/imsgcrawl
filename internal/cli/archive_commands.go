@@ -30,13 +30,14 @@ func (r *runtime) runSync(args []string) error {
 	}
 	fs := flag.NewFlagSet("imsgcrawl sync", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	restore := fs.Bool("restore", false, "")
 	if err := fs.Parse(args); err != nil {
 		return usageErr(err)
 	}
 	if fs.NArg() != 0 {
 		return usageErr(errors.New("sync takes no arguments"))
 	}
-	result, err := archive.Sync(r.ctx, r.archivePath, r.dbPath)
+	result, err := archive.Sync(r.ctx, r.archivePath, r.dbPath, *restore)
 	if err != nil {
 		return err
 	}

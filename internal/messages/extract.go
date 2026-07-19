@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type ArchiveData struct {
 	Participants     []Participant
 	ChatMessages     []ChatMessage
 	Messages         []Message
+	DeletedChats     []string
+	DeletedMessages  []string
 }
 
 type Handle struct {
@@ -48,14 +51,25 @@ type ChatMessage struct {
 }
 
 type Message struct {
-	SourceRowID    int64
-	GUID           string
-	HandleRowID    int64
-	Date           int64
-	Service        string
-	IsFromMe       bool
-	Text           string
-	HasAttachments bool
+	SourceRowID            int64
+	GUID                   string
+	HandleRowID            int64
+	Date                   int64
+	Service                string
+	IsFromMe               bool
+	Text                   string
+	HasAttachments         bool
+	DateEdited             int64
+	DateRetracted          int64
+	RevisionData           []byte
+	HasEdits               bool
+	HasUnsentParts         bool
+	FullyUnsent            bool
+	RevisionAt             int64
+	RevisionIdentity       string
+	DateEditedAvailable    bool
+	DateRetractedAvailable bool
+	RevisionDataAvailable  bool
 }
 
 func ExtractArchive(ctx context.Context, path string) (ArchiveData, error) {
@@ -95,6 +109,12 @@ func ExtractArchive(ctx context.Context, path string) (ArchiveData, error) {
 		return ArchiveData{}, err
 	}
 	if data.Messages, err = extractMessages(ctx, st.DB()); err != nil {
+		return ArchiveData{}, err
+	}
+	if data.DeletedChats, err = extractDeletedGUIDs(ctx, st.DB(), "sync_deleted_chats"); err != nil {
+		return ArchiveData{}, err
+	}
+	if data.DeletedMessages, err = extractDeletedGUIDs(ctx, st.DB(), "sync_deleted_messages"); err != nil {
 		return ArchiveData{}, err
 	}
 	return data, nil
@@ -185,7 +205,11 @@ func extractChatMessages(ctx context.Context, db *sql.DB) ([]ChatMessage, error)
 }
 
 func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
-	rows, err := db.QueryContext(ctx, extractMessagesSQL)
+	query, availability, err := revisionAwareMessagesQuery(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +220,7 @@ func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
 		var fromMe int
 		var hasAttachments int
 		var attributedBody []byte
-		if err := rows.Scan(&m.SourceRowID, &m.GUID, &m.HandleRowID, &m.Date, &m.Service, &fromMe, &m.Text, &attributedBody, &hasAttachments); err != nil {
+		if err := rows.Scan(&m.SourceRowID, &m.GUID, &m.HandleRowID, &m.Date, &m.Service, &fromMe, &m.Text, &attributedBody, &hasAttachments, &m.DateEdited, &m.DateRetracted, &m.RevisionData); err != nil {
 			return nil, err
 		}
 		if m.Text == "" {
@@ -204,7 +228,101 @@ func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
 		}
 		m.IsFromMe = fromMe != 0
 		m.HasAttachments = hasAttachments != 0
+		m.DateEditedAvailable = availability.DateEdited
+		m.DateRetractedAvailable = availability.DateRetracted
+		m.RevisionDataAvailable = availability.RevisionData
+		m.ApplyRevisionData()
 		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+type revisionAvailability struct {
+	DateEdited    bool
+	DateRetracted bool
+	RevisionData  bool
+}
+
+func revisionAwareMessagesQuery(ctx context.Context, db *sql.DB) (string, revisionAvailability, error) {
+	columns, err := tableColumns(ctx, db, "message")
+	if err != nil {
+		return "", revisionAvailability{}, err
+	}
+	availability := revisionAvailability{
+		DateEdited: columns["date_edited"], DateRetracted: columns["date_retracted"],
+		RevisionData: columns["message_summary_info"],
+	}
+	query := extractMessagesSQL
+	for placeholder, column := range map[string]string{
+		"{{DATE_EDITED}}":          "date_edited",
+		"{{DATE_RETRACTED}}":       "date_retracted",
+		"{{MESSAGE_SUMMARY_INFO}}": "message_summary_info",
+	} {
+		expression := "0"
+		if column == "message_summary_info" {
+			expression = "x''"
+		}
+		if columns[column] {
+			expression = "coalesce(m." + column + ", " + expression + ")"
+		}
+		query = strings.ReplaceAll(query, placeholder, expression)
+	}
+	return query, availability, nil
+}
+
+func (m *Message) ApplyRevisionData() {
+	revision := parseMessageSummaryInfo(m.RevisionData)
+	m.HasEdits = revision.HasEdits
+	m.HasUnsentParts = revision.HasUnsentParts
+	m.FullyUnsent = revision.FullyUnsent
+	m.RevisionAt = revision.RevisionAt
+	m.RevisionIdentity = revision.Identity
+}
+
+func tableColumns(ctx context.Context, db *sql.DB, table string) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "select name from pragma_table_info(?)", table)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	columns := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		columns[name] = true
+	}
+	return columns, rows.Err()
+}
+
+func extractDeletedGUIDs(ctx context.Context, db *sql.DB, table string) ([]string, error) {
+	var exists int
+	if err := db.QueryRowContext(ctx, `select count(*) from sqlite_master where type = 'table' and name = ?`, table).Scan(&exists); err != nil {
+		return nil, err
+	}
+	if exists == 0 {
+		return nil, nil
+	}
+	columns, err := tableColumns(ctx, db, table)
+	if err != nil {
+		return nil, err
+	}
+	if !columns["guid"] {
+		return nil, nil
+	}
+	rows, err := db.QueryContext(ctx, "select distinct trim(guid) as guid from "+table+" where nullif(trim(guid), '') is not null order by guid")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var guid string
+		if err := rows.Scan(&guid); err != nil {
+			return nil, err
+		}
+		out = append(out, guid)
 	}
 	return out, rows.Err()
 }

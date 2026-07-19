@@ -13,9 +13,10 @@ select
   count(distinct cm.message_rowid) as messages,
   coalesce(max(m.date), 0) as latest_message
 from chats c
-left join chat_participants cp on cp.chat_rowid = c.source_rowid
-left join chat_messages cm on cm.chat_rowid = c.source_rowid
-left join messages m on m.source_rowid = cm.message_rowid
+left join chat_participants cp on cp.chat_rowid = c.source_rowid and cp.deleted_at is null
+left join chat_messages cm on cm.chat_rowid = c.source_rowid and cm.deleted_at is null
+left join messages m on m.source_rowid = cm.message_rowid and m.deleted_at is null
+where c.deleted_at is null
 {{WHERE}}
 group by c.source_rowid, c.guid, c.display_name, c.room_name, c.chat_identifier, c.service_name
 order by latest_message desc, c.source_rowid desc

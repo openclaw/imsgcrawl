@@ -21,19 +21,19 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 		status.SourceBytes, _ = strconv.ParseInt(sourceBytes, 10, 64)
 	}
 	db := s.store.DB()
-	if status.Handles, err = countTable(ctx, db, "handles"); err != nil {
+	if status.Handles, err = countActive(ctx, db, "handles"); err != nil {
 		return Status{}, err
 	}
-	if status.Chats, err = countTable(ctx, db, "chats"); err != nil {
+	if status.Chats, err = countActive(ctx, db, "chats"); err != nil {
 		return Status{}, err
 	}
-	if status.Participants, err = countTable(ctx, db, "chat_participants"); err != nil {
+	if status.Participants, err = countActive(ctx, db, "chat_participants"); err != nil {
 		return Status{}, err
 	}
-	if status.ChatMessages, err = countTable(ctx, db, "chat_messages"); err != nil {
+	if status.ChatMessages, err = countActive(ctx, db, "chat_messages"); err != nil {
 		return Status{}, err
 	}
-	if status.Messages, err = countTable(ctx, db, "messages"); err != nil {
+	if status.Messages, err = countActive(ctx, db, "messages"); err != nil {
 		return Status{}, err
 	}
 	_ = db.QueryRowContext(ctx, latestMessageDateSQL).Scan(&status.LatestMessageDate)
@@ -41,7 +41,7 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 }
 
 func (s *Store) CountChats(ctx context.Context) (int64, error) {
-	return countTable(ctx, s.store.DB(), "chats")
+	return countActive(ctx, s.store.DB(), "chats")
 }
 
 func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool) ([]MessageRow, error) {

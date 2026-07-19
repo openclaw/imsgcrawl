@@ -44,9 +44,6 @@ var insertChatMessagesSQL string
 //go:embed queries/sync/insert_messages.sql
 var insertMessagesSQL string
 
-//go:embed queries/sync/insert_messages_fts.sql
-var insertMessagesFTSSQL string
-
 //go:embed queries/sync/upsert_sync_state.sql
 var upsertSyncStateSQL string
 

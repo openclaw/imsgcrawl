@@ -6,6 +6,7 @@ type SyncResult struct {
 	SourceBytes      int64  `json:"source_bytes"`
 	SourceModifiedAt string `json:"source_modified_at,omitempty"`
 	SyncedAt         string `json:"synced_at"`
+	Mode             string `json:"mode"`
 	Handles          int    `json:"handles"`
 	Chats            int    `json:"chats"`
 	Participants     int    `json:"participants"`

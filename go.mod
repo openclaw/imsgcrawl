@@ -6,6 +6,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.24
 	github.com/openclaw/crawlkit v0.14.3
 	golang.org/x/sys v0.46.0
+	howett.net/plist v1.0.1
 	modernc.org/sqlite v1.54.0
 )
 

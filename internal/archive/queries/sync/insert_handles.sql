@@ -4,3 +4,7 @@ insert into handles(
   service,
   uncanonicalized_id
 ) values(?, ?, ?, ?)
+on conflict(source_rowid) do update set
+  handle = excluded.handle,
+  service = excluded.service,
+  uncanonicalized_id = excluded.uncanonicalized_id

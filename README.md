@@ -75,7 +75,22 @@ Local archive:
   Messages: 12
 ```
 
-`sync` refreshes the local archive and prints what it imported.
+`sync` merges the current Messages snapshot into the local archive and prints
+what it imported. Rows missing from one snapshot are retained: absence is not a
+deletion signal. Use `imsgcrawl sync --restore` only when you intentionally want
+the archive replaced with the current source snapshot. Each archive is bound to
+one normalized Messages database path; changing sources also requires
+`--restore`, preventing accidental unions of unrelated message stores.
+
+The archive retains explicit deletion tombstones from the Messages sync-delete
+feeds and marks retracted iMessages as unsent. Chats, messages, handles, and
+their participant/message relationships carry `deleted_at` and
+`deletion_reason`; normal reads and search omit those rows. Message revisions
+are append-only events with deterministic identities. The current row also
+keeps Apple's edit/retraction timestamps and raw `message_summary_info`; its
+per-part `ec` edit history and `rp` retractions distinguish partial changes from
+fully unsent messages. Unrelated summary metadata does not create revisions,
+and an ordinary incomplete snapshot is never treated as deletion.
 
 ### Chats
 
