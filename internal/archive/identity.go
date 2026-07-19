@@ -24,16 +24,28 @@ func validateMergeIdentities(ctx context.Context, tx *sql.Tx, data messages.Arch
 	for _, handle := range data.Handles {
 		var existingID, existingService string
 		err := tx.QueryRowContext(ctx, `select handle, service from handles where source_rowid = ?`, handle.SourceRowID).Scan(&existingID, &existingService)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (existingID != handle.ID || existingService != handle.Service) {
+			return identityConflict("handle", handle.SourceRowID,
+				existingService+"/"+existingID, handle.Service+"/"+handle.ID)
+		}
+		if strings.TrimSpace(handle.ID) == "" {
+			continue
+		}
+		var existingRowID int64
+		err = tx.QueryRowContext(ctx, `select source_rowid from handles
+where service = ? and handle = ? and source_rowid > 0 and source_rowid <> ? limit 1`,
+			handle.Service, handle.ID, handle.SourceRowID).Scan(&existingRowID)
 		if errors.Is(err, sql.ErrNoRows) {
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		if existingID != handle.ID || existingService != handle.Service {
-			return identityConflict("handle", handle.SourceRowID,
-				existingService+"/"+existingID, handle.Service+"/"+handle.ID)
-		}
+		return fmt.Errorf("source handle %q also exists at rowid %d instead of only rowid %d; run imsgcrawl sync --restore to replace the archive",
+			handle.Service+"/"+handle.ID, existingRowID, handle.SourceRowID)
 	}
 	return validateIncomingIdentities(data)
 }
@@ -80,12 +92,20 @@ func validateIncomingIdentities(data messages.ArchiveData) error {
 		}
 	}
 	handleRows := map[int64]string{}
+	handleIdentities := map[string]int64{}
 	for _, handle := range data.Handles {
 		identity := handle.Service + "\x00" + handle.ID
 		if existing, ok := handleRows[handle.SourceRowID]; ok && existing != identity {
 			return identityConflict("handle", handle.SourceRowID, existing, identity)
 		}
 		handleRows[handle.SourceRowID] = identity
+		if strings.TrimSpace(handle.ID) != "" {
+			if existing, ok := handleIdentities[identity]; ok && existing != handle.SourceRowID {
+				return fmt.Errorf("source handle %q appears at rowids %d and %d; run imsgcrawl sync --restore after repairing the source",
+					handle.Service+"/"+handle.ID, existing, handle.SourceRowID)
+			}
+			handleIdentities[identity] = handle.SourceRowID
+		}
 	}
 	return nil
 }

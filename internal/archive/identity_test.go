@@ -21,6 +21,7 @@ func TestMergeRejectsSourceIdentityRemapping(t *testing.T) {
 		{name: "message guid moved", mutate: func(data *messages.ArchiveData) { data.Messages[0].SourceRowID = 99 }},
 		{name: "chat rowid reused", mutate: func(data *messages.ArchiveData) { data.Chats[0].GUID = "different-chat" }},
 		{name: "handle rowid reused", mutate: func(data *messages.ArchiveData) { data.Handles[0].ID = "+15559999" }},
+		{name: "handle identity moved", mutate: func(data *messages.ArchiveData) { data.Handles[0].SourceRowID = 99 }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -74,6 +75,27 @@ func TestRestoreAllowsSourceIdentityRemapping(t *testing.T) {
 	}
 	if got := scalar(t, st.store.DB(), `select count(*) from messages where guid = 'replacement-message'`); got != 1 {
 		t.Fatalf("restore replacement identity = %d", got)
+	}
+}
+
+func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
+	ctx := context.Background()
+	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	data := fixtureArchiveData()
+	if err := st.Import(ctx, data, now, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.store.DB().Exec(`insert into handles(source_rowid, handle, service) values(99, ?, ?)`, data.Handles[0].ID, data.Handles[0].Service); err != nil {
+		t.Fatal(err)
+	}
+	err = st.Import(ctx, data, now.Add(time.Minute), false)
+	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
+		t.Fatalf("duplicate handle merge error = %v", err)
 	}
 }
 
