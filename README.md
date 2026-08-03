@@ -1,234 +1,96 @@
----
-written_by: ai
----
+# imsgcrawl 💬 — Your messages, locally searchable
 
-# imsgcrawl
+[![CI](https://img.shields.io/github/actions/workflow/status/openclaw/imsgcrawl/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/openclaw/imsgcrawl/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/openclaw/imsgcrawl?style=flat-square)](https://github.com/openclaw/imsgcrawl/releases/latest)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-555555?style=flat-square)](#install)
+[![Go](https://img.shields.io/badge/Go-1.26.5%2B-00ADD8?style=flat-square)](https://go.dev/)
+[![License](https://img.shields.io/github/license/openclaw/imsgcrawl?style=flat-square)](#license)
 
-`imsgcrawl` is a local-first iMessage crawler. It reads Apple Messages through
-a temporary read-only SQLite snapshot, syncs a source-native archive, and gives
-humans or agents a small command surface for status, chat listing, transcript
-reading, search, and contact export.
-
-The default output is for humans first and agents second: bounded, readable,
-and explicit about follow-up commands. Use `--json` for machines, scripts,
-tests, CrawlBar, or other workflows that need stable fields and local IDs.
-
-## Quick Start
-
-```bash
-imsgcrawl status
-imsgcrawl sync
-imsgcrawl chats
-imsgcrawl messages --chat 42
-imsgcrawl search "candles budget"
-imsgcrawl contacts export
-```
-
-List commands are bounded by default. They show how many rows were returned and
-how to ask for more. Use `--all` only when you really want complete local
-output.
-
-## What You See
-
-Examples below use fake Trump cinematic universe fixture data, not real
-Messages output.
-
-### Metadata
+`imsgcrawl` reads Apple Messages through a temporary read-only SQLite snapshot and syncs it into a local archive. It gives people, scripts, and agents bounded commands for checking status, listing chats, reading messages, searching text, and exporting phone contacts.
 
 ```text
-iMessage Crawl (imsgcrawl)
-Local-first iMessage archive crawler.
-
-Capabilities: metadata, status, sync, chats, messages, search, contact-export
-
-Agent-facing commands:
-  status          imsgcrawl --json status
-  sync            imsgcrawl --json sync
-  chats           imsgcrawl --json chats
-  messages        imsgcrawl --json messages
-  search          imsgcrawl --json search
-  contact-export  imsgcrawl --json contacts export
-
-Machine output: add --json to print the structured manifest.
-```
-
-### Status And Sync
-
-`status` is a safe readiness check. It reports counts, not message contents.
-
-```text
-Status: ok
-Messages source and archive are readable.
-
-Messages source:
-  Database: /Users/example/Library/Messages/chat.db
-  Handles: 6
-  Chats: 4
-  Messages: 12
-
-Local archive:
-  Database: /Users/example/.imsgcrawl/archive.db
-  Last sync: 2026-06-07T09:15:02Z
-  Handles: 6
-  Chats: 4
-  Participants: 8
-  Messages: 12
-```
-
-`sync` merges the current Messages snapshot into the local archive and prints
-what it imported. Rows missing from one snapshot are retained: absence is not a
-deletion signal. Use `imsgcrawl sync --restore` only when you intentionally want
-the archive replaced with the current source snapshot. Each archive is bound to
-one normalized Messages database path; changing sources also requires
-`--restore`, preventing accidental unions of unrelated message stores.
-
-The archive retains explicit deletion tombstones from the Messages sync-delete
-feeds and marks retracted iMessages as unsent. Chats, messages, handles, and
-their participant/message relationships carry `deleted_at` and
-`deletion_reason`; normal reads and search omit those rows. Message revisions
-are append-only events with deterministic identities. The current row also
-keeps Apple's edit/retraction timestamps and raw `message_summary_info`; its
-per-part `ec` edit history and `rp` retractions distinguish partial changes from
-fully unsent messages. The archive reconstructs the current visible body from
-the latest edited parts while omitting retracted parts, so withdrawn text is not
-indexed. Unrelated summary metadata does not create revisions, and an ordinary
-incomplete snapshot is never treated as deletion.
-
-### Chats
-
-`chats` shows the chat ID needed for `messages --chat`, plus enough context for
-a human or agent to choose the right conversation.
-
-```text
-Chats: showing 3 of 4, newest first.
-More: imsgcrawl chats --limit 4
-All: imsgcrawl chats --all
-Open: imsgcrawl messages --chat CHAT_ID
-
-chat  kind    msgs  latest            conversation
-42    group   6     2026-06-07 09:10  Cabinet Group (Elon, JD, Xi, +1 more)
-17    direct  3     2026-06-07 08:55  Failing Elon
-9     direct  2     2026-06-06 22:03  JD Vance
-```
-
-### Messages
-
-`messages` is a wrapped table for scanning. Message bodies stay in the `text`
-column and are not truncated; row limits control size.
-
-```text
-Messages in Cabinet Group (chat 42): showing 3 of 6, newest-first.
-More: imsgcrawl messages --chat 42 --limit 6
-All: imsgcrawl messages --chat 42 --all
-Search: imsgcrawl search QUERY
-
-date              from        text
-2026-06-07 09:10  me          The candles budget is CORRECT.
-2026-06-07 09:09  JD Vance    Sir, I have prepared bullet points:
-                              - The hum is louder
-                              - The couch remains loyal
-2026-06-07 09:08  Failing Elon  (attachment)
-```
-
-### Search
-
-`search` shows which conversation a hit came from and keeps the full matched
-text in the table. Use JSON when an agent or script needs local chat IDs.
-
-```text
-Search "candles budget": showing 1 of 1.
+$ imsgcrawl search "older hello"
+Search "older hello": showing 1 of 1.
 Use --json when you need local chat IDs for follow-up commands.
 
-date              from  conversation                  text
-2026-06-07 09:10  me    Cabinet Group (Elon, JD,      The candles budget is CORRECT.
-                         Xi, +1 more)
+date              from        conversation  text
+2000-12-31 16:00  Older Name  Older Name    older hello
 ```
 
-### Contacts
+The example uses synthetic fixture data. `imsgcrawl` keeps the source database and archive on the local machine.
 
-`contacts export` is intentionally narrow: display name plus phone numbers.
+## Install
 
-```text
-Donald        +15550100
-JD Vance      +15550101
-Failing Elon  +15550102
+Download a prebuilt archive for macOS or Linux from the [latest release](https://github.com/openclaw/imsgcrawl/releases/latest), extract it, and place `imsgcrawl` on your `PATH`. macOS release binaries are signed and notarized.
+
+To build the latest release from source, install Go 1.26.5 or newer and run:
+
+```sh
+go install github.com/openclaw/imsgcrawl/cmd/imsgcrawl@latest
 ```
 
-## JSON Mode
+## Quick start
 
-Text is the agent/human reading surface. JSON is the machine/workflow surface.
-It includes local IDs and stable field names, so code can pipe it through `jq`
-or feed it to crawlkit/CrawlBar-style consumers.
+The default source is `~/Library/Messages/chat.db`, and the default archive is `~/.imsgcrawl/archive.db`. The shell or terminal running `imsgcrawl` may need Full Disk Access on macOS.
 
-```bash
-imsgcrawl --json status
-imsgcrawl --json chats --limit 20
-imsgcrawl --json messages --chat 42 --limit 20
-imsgcrawl --json search --limit 20 "candles budget"
-imsgcrawl --json contacts export
+```sh
+imsgcrawl status
+imsgcrawl sync
+imsgcrawl chats --limit 10
+imsgcrawl messages --chat CHAT_ID --limit 20
+imsgcrawl search "phrase"
 ```
 
-Search JSON keeps the envelope small and parseable:
+Take `CHAT_ID` from the `chats` output. List and search commands are bounded by default; use `--all` only when complete local output is intentional.
 
-```json
-{
-  "schema_version": "crawlkit.control.v1",
-  "app_id": "imsgcrawl",
-  "command": "search",
-  "returned": 1,
-  "total": 1,
-  "limit": 20,
-  "complete": true,
-  "query": "candles budget",
-  "items": [
-    {
-      "chat_id": "42",
-      "chat_title": "Cabinet Group",
-      "sender_label": "me",
-      "text": "The candles budget is CORRECT."
-    }
-  ]
-}
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `metadata` | Print crawler capabilities and paths |
+| `status` | Check source and archive readability without printing messages |
+| `sync` | Merge the Messages snapshot into the local archive |
+| `chats` | List archived conversations and their local IDs |
+| `messages --chat ID` | Read one archived conversation |
+| `search QUERY` | Search archived message text |
+| `contacts export` | Export display names and normalized phone numbers |
+
+Run `imsgcrawl help COMMAND` for flags. The [command reference](docs/commands.md) includes limits, examples, output shapes, and custom database/archive paths.
+
+## Archive behavior
+
+`sync` merges by default, retains rows absent from an ordinary snapshot, and binds an archive to one normalized Messages database path. `sync --restore` replaces the archive from the current source when changing sources or intentionally rebuilding it.
+
+Explicit Messages deletion feeds become tombstones, and iMessage edits and retractions become append-only revision events. Normal reads and search omit deleted or withdrawn content. See [Archive and retention](docs/archive-and-retention.md) for the data model and restore rules.
+
+## JSON and automation
+
+Add `--json` anywhere in the command line for stable fields and local IDs:
+
+```sh
+imsgcrawl --json chats --limit 20 | jq '.items[0]'
 ```
+
+Text output is for local reading; JSON is for scripts, tests, CrawlBar, and other CrawlKit consumers. The [command reference](docs/commands.md#json-output) shows the response envelope.
 
 ## Privacy
 
-Messages data contains private names, phone numbers, emails, and conversation
-contents. Do not publish raw output from a real Messages database. Tests and
-public examples must use fake fixture data.
+Messages data contains private names, email addresses, phone numbers, conversation text, and local paths. Do not publish output from a real Messages database. Public examples, tests, bug reports, and screenshots should use synthetic data.
+
+The archive and smoke-test artifacts contain the same private material. Keep them local unless every disclosed item and destination have been explicitly approved.
 
 ## Development
 
-The repo is designed to be tested through the real `imsgcrawl` binary.
-
-With Nix/devenv:
-
-```bash
-direnv allow
-go install ./cmd/imsgcrawl
-imsgcrawl status
-```
-
-Without Nix, install Go `1.26.5` or newer, then use the normal Go workflow:
-
-```bash
+```sh
+go mod verify
 go test ./...
-go install ./cmd/imsgcrawl
-imsgcrawl status
+go vet ./...
+mkdir -p ./bin
+go build -trimpath -o ./bin/imsgcrawl ./cmd/imsgcrawl
 ```
 
-Install `jq` if you want to run the smoke transcript or inspect JSON examples.
+The optional devenv shell also provides Go, SQLite, and `jq`. See the [agent smoke transcript](docs/commands.md#agent-smoke-transcript) for an end-to-end local CLI check.
 
-## Agent Smoke Transcript
+## License
 
-Use the smoke transcript when reviewing whether the CLI actually works for an
-agent. It runs the real `imsgcrawl` on `PATH`, uses a temporary archive, and
-writes exact stdout/stderr for progressive text and JSON commands to `/tmp`.
-
-```bash
-scripts/agent-smoke-transcript.sh --query "candles budget"
-```
-
-The script prints paths to `review.txt`, `manifest.jsonl`, `commands.tsv`, and
-the raw stdout/stderr directory. These artifacts contain local Messages-derived
-output. Keep them local unless the user explicitly asks to share them.
+This repository does not currently include a license file.
