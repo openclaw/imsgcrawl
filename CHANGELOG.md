@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 - 2026-08-14
 
 ### Archive and retention
 
@@ -12,7 +12,6 @@
 
 - Add `howett.net/plist` to distinguish iMessage per-part edit and unsend metadata in binary property lists
 - Update terminal and system dependencies to `go-runewidth` v0.0.27, `go-isatty` v0.0.24, and `x/sys` v0.47.0
-
 ## 0.1.1 - 2026-07-18
 
 ### Highlights
