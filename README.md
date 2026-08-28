@@ -3,7 +3,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/openclaw/imsgcrawl/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/openclaw/imsgcrawl/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/openclaw/imsgcrawl?style=flat-square)](https://github.com/openclaw/imsgcrawl/releases/latest)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-555555?style=flat-square)](#install)
-[![Go](https://img.shields.io/badge/Go-1.26.6%2B-00ADD8?style=flat-square)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.26.7%2B-00ADD8?style=flat-square)](https://go.dev/)
 [![License](https://img.shields.io/github/license/openclaw/imsgcrawl?style=flat-square)](#license)
 
 `imsgcrawl` reads Apple Messages through a temporary read-only SQLite snapshot and syncs it into a local archive. It gives people, scripts, and agents bounded commands for checking status, listing chats, reading messages, searching text, and exporting phone contacts.
@@ -23,7 +23,7 @@ The example uses synthetic fixture data. `imsgcrawl` keeps the source database a
 
 Download a prebuilt archive for macOS or Linux from the [latest release](https://github.com/openclaw/imsgcrawl/releases/latest), extract it, and place `imsgcrawl` on your `PATH`. macOS release binaries are signed and notarized.
 
-To build the latest release from source, install Go 1.26.6 or newer and run:
+To build from source, install Go 1.26.7 or newer and run:
 
 ```sh
 go install github.com/openclaw/imsgcrawl/cmd/imsgcrawl@latest
