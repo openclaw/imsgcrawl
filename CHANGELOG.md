@@ -4,7 +4,7 @@
 
 ### Dependencies
 
-- Update Go to 1.27.0, CrawlKit to v0.14.7, SQLite to v1.57.0, go-runewidth to v0.0.28, and SQLite runtime dependencies; refresh CI checkout/setup-go actions to v7 and deadcode to v0.49.0
+- Update Go to 1.26.7, CrawlKit to v0.14.7, SQLite to v1.57.0, go-runewidth to v0.0.28, and SQLite runtime dependencies; refresh CI checkout/setup-go actions to v7 and deadcode to v0.49.0
 
 ## v0.2.0 - 2026-08-14
 

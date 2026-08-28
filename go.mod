@@ -1,6 +1,6 @@
 module github.com/openclaw/imsgcrawl
 
-go 1.27.0
+go 1.26.7
 
 require (
 	github.com/mattn/go-runewidth v0.0.28
