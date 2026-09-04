@@ -1,13 +1,13 @@
 module github.com/openclaw/imsgcrawl
 
-go 1.26.7
+go 1.26.8
 
 require (
-	github.com/mattn/go-runewidth v0.0.28
+	github.com/mattn/go-runewidth v0.0.29
 	github.com/openclaw/crawlkit v0.14.7
 	golang.org/x/sys v0.47.0
 	howett.net/plist v1.0.1
-	modernc.org/sqlite v1.57.0
+	modernc.org/sqlite v1.58.0
 )
 
 require (
