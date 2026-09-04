@@ -29,6 +29,8 @@ To build from source, install Go 1.26.7 or newer and run:
 go install github.com/openclaw/imsgcrawl/cmd/imsgcrawl@latest
 ```
 
+The source minimum remains Go 1.26.7. Repository builds prefer Go 1.26.8 through the `toolchain` directive in `go.mod`; Go selects it automatically when toolchain switching is enabled.
+
 ## Quick start
 
 The default source is `~/Library/Messages/chat.db`, and the default archive is `~/.imsgcrawl/archive.db`. The shell or terminal running `imsgcrawl` may need Full Disk Access on macOS.
