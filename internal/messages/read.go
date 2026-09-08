@@ -37,7 +37,7 @@ type handleRow struct {
 }
 
 func Status(ctx context.Context, path string) (StatusReport, error) {
-	snap, err := SnapshotPath(path)
+	snap, err := SnapshotPathContext(ctx, path)
 	if err != nil {
 		return StatusReport{}, err
 	}
@@ -84,7 +84,7 @@ func Status(ctx context.Context, path string) (StatusReport, error) {
 }
 
 func ExportContacts(ctx context.Context, path string) ([]control.Contact, error) {
-	snap, err := SnapshotPath(path)
+	snap, err := SnapshotPathContext(ctx, path)
 	if err != nil {
 		return nil, err
 	}

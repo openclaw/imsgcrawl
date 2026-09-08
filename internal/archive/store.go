@@ -2,7 +2,6 @@ package archive
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,7 +35,14 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	st, err := store.Open(ctx, store.Options{Path: path, Schema: schema})
+	if _, err := inspectArchive(ctx, path, true); err != nil {
+		return nil, err
+	}
+	sqlitePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	st, err := store.Open(ctx, store.Options{Path: sqlitePath, Schema: schema})
 	if err != nil {
 		return nil, err
 	}
@@ -51,25 +57,20 @@ func OpenExisting(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	if _, err := os.Stat(path); err != nil {
-		return nil, err
-	}
-	st, err := store.OpenReadOnly(ctx, path)
+	version, err := inspectArchive(ctx, path, false)
 	if err != nil {
-		return nil, err
-	}
-	version, err := st.SchemaVersion(ctx)
-	if err != nil {
-		_ = st.Close()
 		return nil, err
 	}
 	if version < schemaVersion {
-		_ = st.Close()
 		return Open(ctx, path)
 	}
-	if version > schemaVersion {
-		_ = st.Close()
-		return nil, fmt.Errorf("archive schema version %d is newer than supported version %d", version, schemaVersion)
+	sqlitePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	st, err := store.OpenReadOnly(ctx, sqlitePath)
+	if err != nil {
+		return nil, err
 	}
 	return &Store{store: st, path: path}, nil
 }
@@ -82,8 +83,38 @@ func (s *Store) Close() error {
 }
 
 func Sync(ctx context.Context, archivePath, sourcePath string, restore bool) (SyncResult, error) {
-	data, err := messages.ExtractArchive(ctx, sourcePath)
+	return syncArchive(ctx, archivePath, sourcePath, restore, messages.ExtractArchive)
+}
+
+func syncArchive(ctx context.Context, archivePath, sourcePath string, restore bool,
+	extract func(context.Context, string) (messages.ArchiveData, error),
+) (SyncResult, error) {
+	if archivePath == "" {
+		archivePath = DefaultPath()
+	}
+	if sourcePath == "" {
+		sourcePath = messages.DefaultChatDBPath()
+	}
+	if err := rejectSourceOverlap(archivePath, sourcePath); err != nil {
+		return SyncResult{}, err
+	}
+	lockPath, err := canonicalPath(archivePath)
 	if err != nil {
+		return SyncResult{}, err
+	}
+	unlock, err := lockSync(ctx, lockPath)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	defer unlock()
+	if _, err := inspectArchive(ctx, archivePath, true); err != nil {
+		return SyncResult{}, err
+	}
+	data, err := extract(ctx, sourcePath)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if err := rejectSourceOverlap(archivePath, sourcePath); err != nil {
 		return SyncResult{}, err
 	}
 	st, err := Open(ctx, archivePath)

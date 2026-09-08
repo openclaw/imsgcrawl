@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reject orphaned or aliased archive sidecars before initialization, including beside zero-byte archive files, and refuse hardlinked sync outputs; keep cross-process locks separate from SQLite's own database locks.
+
+### Archive safety
+
+- Reject foreign archives and Messages source/sidecar aliases before writable archive access.
+- Verify private SQLite snapshot generations without opening or repairing the Messages source, and honor cancellation.
+- Serialize concurrent sync validation, extraction, and import so an older extraction cannot overwrite a newer sync.
+
 ### Dependencies
 
 - Prefer the Go 1.26.8 toolchain while retaining the Go 1.26.7 source minimum; update SQLite to v1.58.0 and go-runewidth to v0.0.29
