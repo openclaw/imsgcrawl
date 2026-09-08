@@ -35,11 +35,11 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	if _, err := inspectArchive(ctx, path, true); err != nil {
-		return nil, err
-	}
 	sqlitePath, err := filepath.Abs(path)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := inspectArchive(ctx, sqlitePath, true); err != nil {
 		return nil, err
 	}
 	st, err := store.Open(ctx, store.Options{Path: sqlitePath, Schema: schema})
@@ -57,16 +57,16 @@ func OpenExisting(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	version, err := inspectArchive(ctx, path, false)
+	sqlitePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	version, err := inspectArchive(ctx, sqlitePath, false)
 	if err != nil {
 		return nil, err
 	}
 	if version < schemaVersion {
 		return Open(ctx, path)
-	}
-	sqlitePath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
 	}
 	st, err := store.OpenReadOnly(ctx, sqlitePath)
 	if err != nil {
@@ -95,10 +95,14 @@ func syncArchive(ctx context.Context, archivePath, sourcePath string, restore bo
 	if sourcePath == "" {
 		sourcePath = messages.DefaultChatDBPath()
 	}
-	if err := rejectSourceOverlap(archivePath, sourcePath); err != nil {
+	sqlitePath, err := filepath.Abs(archivePath)
+	if err != nil {
 		return SyncResult{}, err
 	}
-	lockPath, err := canonicalPath(archivePath)
+	if err := rejectSourceOverlap(sqlitePath, sourcePath); err != nil {
+		return SyncResult{}, err
+	}
+	lockPath, err := canonicalPath(sqlitePath)
 	if err != nil {
 		return SyncResult{}, err
 	}
@@ -107,17 +111,17 @@ func syncArchive(ctx context.Context, archivePath, sourcePath string, restore bo
 		return SyncResult{}, err
 	}
 	defer unlock()
-	if _, err := inspectArchive(ctx, archivePath, true); err != nil {
+	if _, err := inspectArchive(ctx, sqlitePath, true); err != nil {
 		return SyncResult{}, err
 	}
 	data, err := extract(ctx, sourcePath)
 	if err != nil {
 		return SyncResult{}, err
 	}
-	if err := rejectSourceOverlap(archivePath, sourcePath); err != nil {
+	if err := rejectSourceOverlap(sqlitePath, sourcePath); err != nil {
 		return SyncResult{}, err
 	}
-	st, err := Open(ctx, archivePath)
+	st, err := Open(ctx, sqlitePath)
 	if err != nil {
 		return SyncResult{}, err
 	}
@@ -131,7 +135,7 @@ func syncArchive(ctx context.Context, archivePath, sourcePath string, restore bo
 		mode = "restore"
 	}
 	return SyncResult{
-		ArchivePath:      st.path,
+		ArchivePath:      archivePath,
 		SourcePath:       data.SourcePath,
 		SourceBytes:      data.SourceBytes,
 		SourceModifiedAt: data.SourceModifiedAt.Format(time.RFC3339),
