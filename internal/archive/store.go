@@ -35,7 +35,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	sqlitePath, err := filepath.Abs(path)
+	sqlitePath, err := archiveFilename(path)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func OpenExisting(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultPath()
 	}
-	sqlitePath, err := filepath.Abs(path)
+	sqlitePath, err := archiveFilename(path)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func syncArchive(ctx context.Context, archivePath, sourcePath string, restore bo
 	if sourcePath == "" {
 		sourcePath = messages.DefaultChatDBPath()
 	}
-	sqlitePath, err := filepath.Abs(archivePath)
+	sqlitePath, err := archiveFilename(archivePath)
 	if err != nil {
 		return SyncResult{}, err
 	}

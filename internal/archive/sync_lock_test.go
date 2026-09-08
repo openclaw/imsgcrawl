@@ -169,3 +169,52 @@ func TestSyncSerializesDanglingArchiveSymlink(t *testing.T) {
 		t.Fatalf("second=%v first=%v", err, firstErr)
 	}
 }
+
+func TestSyncWhitespaceSpellingsShareHeldLock(t *testing.T) {
+	for _, firstSuffix := range []string{"", " "} {
+		t.Run("first="+firstSuffix, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "archive.db")
+			source := filepath.Join(t.TempDir(), "source.db")
+			first, second := path+firstSuffix, path
+			if firstSuffix == "" {
+				second += " "
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			started, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+			go func() {
+				_, err := syncArchive(ctx, first, source, false, func(context.Context, string) (messages.ArchiveData, error) {
+					close(started)
+					select {
+					case <-release:
+						return messages.ArchiveData{SourcePath: source}, nil
+					case <-ctx.Done():
+						return messages.ArchiveData{}, ctx.Err()
+					}
+				})
+				done <- err
+			}()
+			select {
+			case <-started:
+			case err := <-done:
+				t.Fatalf("first sync did not acquire lock: %v", err)
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+			wait, stop := context.WithTimeout(ctx, 100*time.Millisecond)
+			defer stop()
+			_, err := syncArchive(wait, second, source, false, func(context.Context, string) (messages.ArchiveData, error) {
+				t.Error("whitespace spelling bypassed held sync lock")
+				return messages.ArchiveData{}, errors.New("unexpected extraction")
+			})
+			close(release)
+			firstErr := <-done
+			if !errors.Is(err, context.DeadlineExceeded) || firstErr != nil {
+				t.Fatalf("second=%v first=%v", err, firstErr)
+			}
+			if _, err := os.Stat(path + " .sync.lock"); !os.IsNotExist(err) {
+				t.Fatalf("created separate whitespace lock: %v", err)
+			}
+		})
+	}
+}

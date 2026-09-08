@@ -8,6 +8,7 @@
 
 - Reject foreign archives and Messages source/sidecar aliases before writable archive access.
 - Validate and lock the same normalized archive filename SQLite opens, including paths containing a symlink followed by `..`.
+- Apply SQLite's trailing-whitespace filename normalization before archive checks and sync locking; reject unstable trimmed paths without changing Messages source filenames.
 - Verify private SQLite snapshot generations without opening or repairing the Messages source, and honor cancellation.
 - Serialize concurrent sync validation, extraction, and import so an older extraction cannot overwrite a newer sync.
 
