@@ -1,10 +1,11 @@
 package messages
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
-	"github.com/openclaw/crawlkit/cache"
+	"github.com/openclaw/imsgcrawl/internal/sqlitesnapshot"
 )
 
 type Snapshot struct {
@@ -14,6 +15,10 @@ type Snapshot struct {
 }
 
 func SnapshotPath(path string) (Snapshot, error) {
+	return SnapshotPathContext(context.Background(), path)
+}
+
+func SnapshotPathContext(ctx context.Context, path string) (Snapshot, error) {
 	if path == "" {
 		path = DefaultChatDBPath()
 	}
@@ -25,16 +30,11 @@ func SnapshotPath(path string) (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	root, err := os.MkdirTemp("", "imsgcrawl-snapshot-*")
+	result, _, err := sqlitesnapshot.Copy(ctx, path)
 	if err != nil {
 		return Snapshot{}, err
 	}
-	result, err := cache.SnapshotSQLite(cache.SQLiteSnapshotOptions{SourcePath: path, DestinationDir: root})
-	if err != nil {
-		_ = os.RemoveAll(root)
-		return Snapshot{}, err
-	}
-	return Snapshot{SourcePath: path, Path: result.Path, root: root}, nil
+	return Snapshot{SourcePath: path, Path: result, root: filepath.Dir(result)}, nil
 }
 
 func (s Snapshot) Close() error {

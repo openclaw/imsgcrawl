@@ -2,8 +2,19 @@
 
 ## Unreleased
 
+- Reject orphaned or aliased archive sidecars before initialization, including beside zero-byte archive files, and refuse hardlinked sync outputs; keep cross-process locks separate from SQLite's own database locks.
+
+### Archive safety
+
+- Reject foreign archives and Messages source/sidecar aliases before writable archive access.
+- Validate and lock the same normalized archive filename SQLite opens, including paths containing a symlink followed by `..`.
+- Apply SQLite's trailing-whitespace filename normalization before archive checks and sync locking; reject unstable trimmed paths without changing Messages source filenames.
+- Verify private SQLite snapshot generations without opening or repairing the Messages source, and honor cancellation.
+- Serialize concurrent sync validation, extraction, and import so an older extraction cannot overwrite a newer sync.
+
 ### Dependencies
 
+- Update CrawlKit to v0.15.0, require Go 1.27.0 and prefer Go 1.27.1 for source builds; verify both compiler versions and complete frozen-database vulnerability results in macOS CI.
 - Prefer the Go 1.26.8 toolchain while retaining the Go 1.26.7 source minimum; update SQLite to v1.58.0 and go-runewidth to v0.0.29
 - Update Go to 1.26.7, CrawlKit to v0.14.7, SQLite to v1.57.0, go-runewidth to v0.0.28, and SQLite runtime dependencies; refresh CI checkout/setup-go actions to v7 and deadcode to v0.49.0
 

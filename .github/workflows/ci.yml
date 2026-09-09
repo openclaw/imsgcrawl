@@ -17,6 +17,10 @@ jobs:
   test:
     runs-on: macos-latest
     timeout-minutes: 20
+    env:
+      GOWORK: "off"
+      GOENV: "off"
+      GOTOOLCHAIN: "local"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -24,8 +28,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: "1.27.1"
           cache: true
+
+      - name: Verify preferred toolchain
+        run: |
+          go version
+          test "$(go env GOVERSION)" = "go1.27.1"
 
       - name: Verify module cache
         run: go mod verify
@@ -54,3 +63,103 @@ jobs:
         run: |
           mkdir -p bin
           go build -trimpath -o bin/imsgcrawl ./cmd/imsgcrawl
+
+  minimum:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      GOWORK: "off"
+      GOENV: "off"
+      GOTOOLCHAIN: "local"
+      GOMAXPROCS: "2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup minimum Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.0"
+          cache: true
+
+      - name: Verify minimum toolchain
+        run: |
+          go version
+          test "$(go env GOVERSION)" = "go1.27.0"
+
+      - name: Verify minimum modules
+        run: |
+          go mod tidy -diff
+          go mod verify
+
+      - name: Build with minimum Go
+        run: go build -p=1 ./...
+
+      - name: Test with minimum Go
+        run: go test -count=1 -p=1 -timeout=120s ./...
+
+  vulnerabilities:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    env:
+      GOWORK: "off"
+      GOENV: "off"
+      GOTOOLCHAIN: "local"
+      GOMAXPROCS: "2"
+      GOFLAGS: "-mod=readonly -p=1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup preferred Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.1"
+          cache: true
+
+      - name: Verify structured scan evaluator
+        run: python3 .github/scripts/test_vulncheck.py
+
+      - name: Stage public modules, scanner and frozen advisories
+        run: |
+          go version
+          test "$(go env GOVERSION)" = "go1.27.1"
+          go mod download
+          GOBIN="$RUNNER_TEMP/vulntools" go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          python3 .github/scripts/vulncheck.py stage "$RUNNER_TEMP/vulndb"
+
+      - name: Scan preferred native configuration
+        id: preferred
+        continue-on-error: true
+        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-preferred" go1.27.1 darwin
+
+      - name: Setup minimum Go for separate advisory qualification
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.0"
+          cache: true
+
+      - name: Scan minimum native configuration
+        id: minimum
+        continue-on-error: true
+        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-minimum" go1.27.0 darwin
+
+      - name: Retain complete advisory evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: darwin-vulnerability-evidence
+          path: |
+            ${{ runner.temp }}/vulndb
+            ${{ runner.temp }}/vuln-preferred
+            ${{ runner.temp }}/vuln-minimum
+          if-no-files-found: error
+
+      - name: Require both complete structured scans
+        if: always()
+        env:
+          PREFERRED_OUTCOME: ${{ steps.preferred.outcome }}
+          MINIMUM_OUTCOME: ${{ steps.minimum.outcome }}
+        run: |
+          test "$PREFERRED_OUTCOME" = success
+          test "$MINIMUM_OUTCOME" = success
