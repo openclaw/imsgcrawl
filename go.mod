@@ -1,12 +1,12 @@
 module github.com/openclaw/imsgcrawl
 
-go 1.26.7
+go 1.27.0
 
-toolchain go1.26.8
+toolchain go1.27.1
 
 require (
 	github.com/mattn/go-runewidth v0.0.29
-	github.com/openclaw/crawlkit v0.14.7
+	github.com/openclaw/crawlkit v0.15.0
 	golang.org/x/sys v0.47.0
 	howett.net/plist v1.0.1
 	modernc.org/sqlite v1.58.0
