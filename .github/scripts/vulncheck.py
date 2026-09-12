@@ -13,6 +13,8 @@ import subprocess
 import sys
 import urllib.request
 
+SCANNER_VERSION = "v1.8.0"
+
 
 def json_stream(text):
     decoder = json.JSONDecoder()
@@ -236,7 +238,7 @@ def scan(database, scanner, output, version, platform):
         raise ValueError("frozen advisory bytes changed during scan")
     summary = evaluate((output / "scan.json").read_text(), {
         "protocol_version": "v1.0.0", "scanner_name": "govulncheck",
-        "scanner_version": "v1.7.0", "db": db_uri,
+        "scanner_version": SCANNER_VERSION, "db": db_uri,
         "db_last_modified": frozen["database"]["modified"],
         "go_version": version, "scan_level": "symbol", "scan_mode": "source",
     }, packages)
@@ -249,6 +251,7 @@ def scan(database, scanner, output, version, platform):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("scanner-version", help="print the required govulncheck version")
     prepare = commands.add_parser("stage")
     prepare.add_argument("database", type=Path)
     run = commands.add_parser("scan")
@@ -258,7 +261,9 @@ def main():
     run.add_argument("version")
     run.add_argument("platform", choices=["darwin", "linux"])
     args = parser.parse_args()
-    if args.command == "stage":
+    if args.command == "scanner-version":
+        print(SCANNER_VERSION)
+    elif args.command == "stage":
         stage(args.database)
     else:
         scan(args.database, args.scanner, args.output, args.version, args.platform)

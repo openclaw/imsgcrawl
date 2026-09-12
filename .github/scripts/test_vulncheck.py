@@ -6,7 +6,7 @@ import vulncheck
 
 class StructuredScanTest(unittest.TestCase):
     def setUp(self):
-        self.expected = {"scanner_version": "v1.7.0", "go_version": "go1.27.1"}
+        self.expected = {"scanner_version": vulncheck.SCANNER_VERSION, "go_version": "go1.27.1"}
         self.packages = {
             "roots": ["example.invalid/app"],
             "modules": {"example.invalid/app": "", "stdlib": "v1.27.1"},
@@ -57,6 +57,11 @@ class StructuredScanTest(unittest.TestCase):
         for message in ({"config": self.expected}, {"error": "load failed"}):
             with self.subTest(message=message), self.assertRaises(ValueError):
                 self.evaluate([message])
+
+    def test_unexpected_scanner_version_fails(self):
+        self.messages[0]["config"]["scanner_version"] = "v0.0.0"
+        with self.assertRaisesRegex(ValueError, "scanner Config mismatch: scanner_version"):
+            self.evaluate()
 
     def test_truncated_output_fails(self):
         text = "\n".join(json.dumps(value) for value in self.messages)

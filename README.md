@@ -95,4 +95,4 @@ The optional devenv shell also provides Go, SQLite, and `jq`. See the [agent smo
 
 ## License
 
-This repository does not currently include a license file.
+Licensed under the [MIT License](LICENSE).
