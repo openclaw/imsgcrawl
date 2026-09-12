@@ -2,6 +2,8 @@
 
 `imsgcrawl` copies the live Messages database into a temporary read-only SQLite snapshot before reading it. `sync` then stores source-native handles, chats, participants, messages, revisions, and search data in the local archive.
 
+On macOS, snapshots use copy-on-write clones when the source and temporary directory share a supporting filesystem, reducing temporary disk allocation. Other filesystems and cross-volume snapshots use byte copies. Both paths verify the full captured generation and recover journals only in private temporary storage; snapshot reads still scan the files, and recovery or concurrent writes can require additional disk space.
+
 ## Merge and restore
 
 A normal sync merges the current snapshot into the archive. Rows missing from one snapshot remain in the archive because absence is not a deletion signal.

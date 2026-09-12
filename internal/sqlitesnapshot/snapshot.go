@@ -98,17 +98,9 @@ func copyGeneration(ctx context.Context, source, dest string) (bool, error) {
 		if before[suffix] == nil {
 			continue
 		}
-		out, err := os.OpenFile(dest+suffix, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		digest, err := copyFile(ctx, source+suffix, dest+suffix, before[suffix])
 		if err != nil {
 			return false, err
-		}
-		digest, err := readFile(ctx, source+suffix, before[suffix], out)
-		closeErr := out.Close()
-		if err != nil {
-			return false, err
-		}
-		if closeErr != nil {
-			return false, closeErr
 		}
 		digests[suffix] = digest
 	}
@@ -136,6 +128,39 @@ func copyGeneration(ctx context.Context, source, dest string) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func copyFile(ctx context.Context, source, dest string, expected os.FileInfo) ([sha256.Size]byte, error) {
+	var empty [sha256.Size]byte
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
+	cloned, err := cloneFile(source, dest, expected)
+	if err != nil {
+		return empty, err
+	}
+	if cloned {
+		info, err := os.Stat(dest)
+		if err != nil {
+			return empty, err
+		}
+		if info.Size() != expected.Size() {
+			return empty, os.ErrNotExist
+		}
+		// Hash the private clone, then compare with the live source in the
+		// second pass. Cloning each file is not an atomic SQLite generation.
+		return readFile(ctx, dest, info, io.Discard)
+	}
+	out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return empty, err
+	}
+	digest, err := readFile(ctx, source, expected, out)
+	closeErr := out.Close()
+	if err != nil {
+		return empty, err
+	}
+	return digest, closeErr
 }
 
 func readFile(ctx context.Context, path string, expected os.FileInfo, out io.Writer) ([sha256.Size]byte, error) {
