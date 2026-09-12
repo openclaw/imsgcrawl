@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 - 2026-09-11
 
 **Highlights:** Safer archive access and lower temporary snapshot allocation on supported macOS filesystems.
 
