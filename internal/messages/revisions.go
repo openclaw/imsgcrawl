@@ -19,14 +19,6 @@ type revisionState struct {
 	Identity       string
 }
 
-func parseMessageSummaryInfo(data []byte) revisionState {
-	root, ok := messageSummaryRoot(data)
-	if !ok {
-		return revisionState{}
-	}
-	return parseMessageSummaryRoot(root)
-}
-
 func messageSummaryRoot(data []byte) (map[string]any, bool) {
 	if len(data) == 0 {
 		return nil, false

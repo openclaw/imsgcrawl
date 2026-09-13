@@ -1,6 +1,10 @@
 package cli
 
 import (
+	"errors"
+	"flag"
+	"fmt"
+
 	"github.com/openclaw/crawlkit/control"
 	"github.com/openclaw/imsgcrawl/internal/archive"
 )
@@ -50,4 +54,17 @@ func newListHeader(command string, returned int, total int64, limit int) listHea
 		Limit:         limit,
 		Complete:      total <= int64(returned),
 	}
+}
+
+func resolveListLimit(fs *flag.FlagSet, command string, limit int, all bool) (int, error) {
+	if limit <= 0 {
+		return 0, usageErr(fmt.Errorf("%s --limit must be positive", command))
+	}
+	if all && flagPassed(fs, "limit") {
+		return 0, usageErr(errors.New("use either --all or --limit"))
+	}
+	if all {
+		return 0, nil
+	}
+	return limit, nil
 }

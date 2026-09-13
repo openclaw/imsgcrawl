@@ -47,8 +47,8 @@ func TestDecodeAttributedBody(t *testing.T) {
 		{name: "extended length", text: strings.Repeat("x", 300)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := decodeAttributedBody(makeStreamtypedAttributedBody(tc.text))
-			if got != tc.text {
+			got, ok := decodeAttributedBodyValue(makeStreamtypedAttributedBody(tc.text))
+			if !ok || got != tc.text {
 				t.Fatalf("got %q, want %q", got, tc.text)
 			}
 		})

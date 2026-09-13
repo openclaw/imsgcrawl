@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -149,7 +150,7 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 		if chat.ChatID == "4" && (chat.Kind != "group" || chat.ParticipantCount != 3) {
 			t.Fatalf("group chat context = %#v", chat)
 		}
-		if chat.ChatID == "4" && !hasString(chat.ParticipantHandles, "+15550103") {
+		if chat.ChatID == "4" && !slices.Contains(chat.ParticipantHandles, "+15550103") {
 			t.Fatalf("group participant handles = %#v", chat)
 		}
 		if chat.ChatID == "2" && (chat.Kind != "direct" || chat.ParticipantCount != 1) {
@@ -352,7 +353,7 @@ func TestMetadataAdvertisesCrawlerCommands(t *testing.T) {
 		t.Fatalf("sync should be marked mutating = %#v", manifest.Commands["sync"])
 	}
 	for _, want := range []string{"message-archive", "message-text-search"} {
-		if !hasString(manifest.Privacy.LocalOnlyScopes, want) {
+		if !slices.Contains(manifest.Privacy.LocalOnlyScopes, want) {
 			t.Fatalf("local_only_scopes = %#v, missing %q", manifest.Privacy.LocalOnlyScopes, want)
 		}
 	}

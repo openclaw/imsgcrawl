@@ -38,7 +38,6 @@ func ExitCode(err error) int {
 type runtime struct {
 	ctx         context.Context
 	stdout      io.Writer
-	stderr      io.Writer
 	json        bool
 	dbPath      string
 	archivePath string
@@ -81,7 +80,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		_, _ = io.WriteString(stdout, version+"\n")
 		return nil
 	}
-	r := &runtime{ctx: ctx, stdout: stdout, stderr: stderr, json: jsonOut, dbPath: *dbPath, archivePath: *archivePath}
+	r := &runtime{ctx: ctx, stdout: stdout, json: jsonOut, dbPath: *dbPath, archivePath: *archivePath}
 	return r.dispatch(rest)
 }
 

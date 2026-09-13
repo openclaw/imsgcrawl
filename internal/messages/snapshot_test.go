@@ -29,7 +29,7 @@ create table fixture(value text); insert into fixture values('committed in WAL')
 			t.Fatal(err)
 		}
 	}
-	snapshot, err := SnapshotPath(source)
+	snapshot, err := SnapshotPathContext(context.Background(), source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestSnapshotPathRejectsCorruptionAndCancellation(t *testing.T) {
 	if err := os.WriteFile(source, []byte("not a database"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SnapshotPath(source); err == nil {
+	if _, err := SnapshotPathContext(context.Background(), source); err == nil {
 		t.Fatal("corrupt source accepted")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
