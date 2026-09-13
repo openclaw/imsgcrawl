@@ -37,7 +37,7 @@ insert into chat values
   (1, 'chat-one', 'Synthetic Friend', '+15550100', 'iMessage', '', 0);
 insert into chat_handle_join values (1, 1);
 insert into message(rowid,guid,handle_id,date,service,is_from_me,text) values
-  (1,'message-one',1,800000000000000000,'iMessage',0,'synthetic orchard'),
+  (1,'message-one',1,800000000000000000,'iMessage',0,'synthetic orchard --help --json'),
   (2,'message-two',2,800000001000000000,'SMS',1,'synthetic reply');
 insert into chat_message_join values (1,1), (1,2);
 """
@@ -69,6 +69,10 @@ def smoke(binary, directory):
     assert run("chats")["items"][0]["message_count"] == 2
     assert run("messages", "--chat", "1")["returned"] == 2
     assert run("search", "orchard")["returned"] == 1
+    for query in ("--help", "--json"):
+        literal = run("search", "--", query)
+        assert literal["query"] == query and literal["returned"] == 1
+    assert "Usage:" in run("--help", machine=False)
     contacts = run("contacts", "export")["contacts"]
     assert len(contacts) == 1
     assert contacts[0]["phone_numbers"] == ["0015550100"]

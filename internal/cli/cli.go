@@ -62,6 +62,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	archivePath := global.String("archive", archive.DefaultPath(), "")
 	versionFlag := global.Bool("version", false, "")
 	if err := global.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printUsage(stdout)
+			return nil
+		}
 		return usageErr(err)
 	}
 	if *versionFlag {
@@ -87,7 +91,11 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 func pullJSONFlag(args []string) (bool, []string) {
 	out := make([]string, 0, len(args))
 	jsonOut := false
-	for _, arg := range args {
+	for i, arg := range args {
+		if arg == "--" {
+			out = append(out, args[i:]...)
+			break
+		}
 		if arg == "--json" {
 			jsonOut = true
 			continue
@@ -109,6 +117,9 @@ func flagPassed(fs *flag.FlagSet, name string) bool {
 
 func hasHelpFlag(args []string) bool {
 	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
 		if arg == "-h" || arg == "--help" || arg == "-help" {
 			return true
 		}
