@@ -107,7 +107,10 @@ date              from       text
 imsgcrawl search "older hello"
 imsgcrawl search --limit 10 "older hello"
 imsgcrawl search --all "older hello"
+imsgcrawl search -- "--help"
 ```
+
+Use `--` before a query that looks like a flag. Arguments after it are literal search text, including `--help` and `--json`; enable JSON output before the terminator.
 
 The default limit is 20. Text output identifies the conversation; JSON also carries local chat IDs for follow-up commands.
 

@@ -41,6 +41,7 @@ imsgcrawl sync
 imsgcrawl chats --limit 10
 imsgcrawl messages --chat CHAT_ID --limit 20
 imsgcrawl search "phrase"
+imsgcrawl search -- "--help"
 ```
 
 Take `CHAT_ID` from the `chats` output. List and search commands are bounded by default; use `--all` only when complete local output is intentional.
