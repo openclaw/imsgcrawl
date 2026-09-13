@@ -194,3 +194,5 @@ scripts/agent-smoke-transcript.sh --query "candles budget"
 ```
 
 The script prints paths to `review.txt`, `manifest.jsonl`, `commands.tsv`, and raw stream files. These artifacts contain Messages-derived data. Keep them local unless the user explicitly approves the content and destination.
+
+Each run creates a private output directory and private files, regardless of your shell's umask. `--out-dir DIR` must name a new directory; existing directories and symlinks are rejected so earlier transcripts cannot be overwritten or mixed into the new run.

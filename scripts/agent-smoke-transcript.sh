@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -u
+umask 077
 
 search_query=""
 include_search_all=0
@@ -17,6 +18,7 @@ Runs the real imsgcrawl binary on PATH and captures exact stdout/stderr for a
 progressive agent smoke pass. Exact raw outputs are written only to the local
 output directory, which defaults to /tmp. The default review file contains
 bounded previews plus raw file paths, not a full giant transcript.
+--out-dir must name a new directory; existing paths are never reused.
 USAGE
 }
 
@@ -88,7 +90,11 @@ if [[ -z "$out_dir" ]]; then
   out_dir="${TMPDIR:-/tmp}/imsgcrawl-agent-smoke-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 fi
 raw_dir="$out_dir/raw"
-mkdir -p "$raw_dir"
+if ! mkdir -p "$(dirname "$out_dir")" || ! mkdir -m 700 "$out_dir"; then
+  echo "output directory must be new: $out_dir" >&2
+  exit 1
+fi
+mkdir "$raw_dir" || exit 1
 
 review="$out_dir/review.txt"
 transcript="$out_dir/transcript.txt"
