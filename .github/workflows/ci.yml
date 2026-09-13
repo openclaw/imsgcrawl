@@ -75,6 +75,9 @@ jobs:
       - name: Built CLI smoke with synthetic Messages data
         run: python3 scripts/smoke-cli.py bin/imsgcrawl
 
+      - name: Transcript privacy regressions
+        run: python3 -B scripts/test_smoke_transcript.py
+
   minimum:
     runs-on: macos-latest
     timeout-minutes: 20
