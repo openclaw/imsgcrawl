@@ -6,11 +6,6 @@ import (
 	"unicode/utf8"
 )
 
-func decodeAttributedBody(body []byte) string {
-	text, _ := decodeAttributedBodyValue(body)
-	return text
-}
-
 func decodeAttributedBodyValue(body []byte) (string, bool) {
 	if !bytes.HasPrefix(body, []byte("\x04\x0bstreamtyped")) {
 		return "", false

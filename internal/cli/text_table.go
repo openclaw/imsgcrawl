@@ -86,9 +86,7 @@ func renderTextRow(w io.Writer, columns []textColumn, row []string) error {
 		} else {
 			cells[i] = []string{truncateCell(value, column.width)}
 		}
-		if len(cells[i]) > height {
-			height = len(cells[i])
-		}
+		height = max(height, len(cells[i]))
 	}
 	for line := 0; line < height; line++ {
 		for i, column := range columns {
@@ -217,10 +215,6 @@ func compactCellText(value string) string {
 func normalizeCellText(value string) string {
 	value = strings.ReplaceAll(value, "\r\n", "\n")
 	return strings.ReplaceAll(value, "\r", "\n")
-}
-
-func tableRows(count int) [][]string {
-	return make([][]string, 0, count)
 }
 
 func textColumnWidth(totalWidth int, fixedColumns ...int) int {

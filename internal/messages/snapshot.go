@@ -14,10 +14,6 @@ type Snapshot struct {
 	root       string
 }
 
-func SnapshotPath(path string) (Snapshot, error) {
-	return SnapshotPathContext(context.Background(), path)
-}
-
 func SnapshotPathContext(ctx context.Context, path string) (Snapshot, error) {
 	if path == "" {
 		path = DefaultChatDBPath()

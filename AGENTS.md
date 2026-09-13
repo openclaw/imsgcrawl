@@ -1,7 +1,3 @@
----
-written_by: ai
----
-
 # AGENTS.md
 
 This file governs `imsgcrawl`.
@@ -10,7 +6,7 @@ This file governs `imsgcrawl`.
 
 `imsgcrawl` is the iMessage source crawler. It owns read-only access to the
 local Messages database, source-native iMessage archive state, source-local
-status/search/open commands, and the small contact-export surface that clawdex
+status/search/read commands, and the small contact-export surface that clawdex
 can pull.
 
 Do not add Gmail, Telegram, WhatsApp, Apple Contacts import, source cards,
@@ -42,8 +38,8 @@ redacted examples.
 ## CLI Shape
 
 Stable CLI output is JSON-first and should follow crawl-family commands:
-`metadata`, `status`, `contacts export`, and later `sync`, `chats`,
-`messages`, `search`, and `tui`.
+`metadata`, `status`, `sync`, `chats`, `messages`, `search`, and
+`contacts export`.
 
 Agent-facing default text output is product surface, not incidental logging.
 When command names, flags, defaults, output fields, or default text formatting

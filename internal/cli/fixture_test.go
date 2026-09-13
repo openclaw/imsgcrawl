@@ -38,15 +38,6 @@ func hasWarning(warnings []string, want string) bool {
 	return false
 }
 
-func hasString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
-}
-
 func createMessagesFixture(t *testing.T, path string) {
 	t.Helper()
 	longLaunchNote := "latest launch note with candles budget and tariffs. " + strings.Repeat("This sentence keeps going so transcript output must stay whole. ", 3) + "full tail marker"

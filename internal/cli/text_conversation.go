@@ -56,7 +56,7 @@ func messageColumnWidths(width int) (dateWidth int, fromWidth int, textWidth int
 	textWidth = remaining - fromWidth
 	if textWidth < 30 {
 		needed := 30 - textWidth
-		fromReduction := minInt(needed, fromWidth-14)
+		fromReduction := min(needed, fromWidth-14)
 		fromWidth -= fromReduction
 		textWidth = remaining - fromWidth
 	}
@@ -85,31 +85,18 @@ func searchColumnWidths(width int) (dateWidth int, fromWidth int, conversationWi
 	textWidth = remaining - fromWidth - conversationWidth
 	if textWidth < 20 {
 		needed := 20 - textWidth
-		conversationReduction := minInt(needed, conversationWidth-18)
+		conversationReduction := min(needed, conversationWidth-18)
 		conversationWidth -= conversationReduction
 		needed -= conversationReduction
-		fromReduction := minInt(needed, fromWidth-12)
+		fromReduction := min(needed, fromWidth-12)
 		fromWidth -= fromReduction
 		textWidth = remaining - fromWidth - conversationWidth
 	}
 	return dateWidth, fromWidth, conversationWidth, textWidth
 }
 
-func clampWidth(value, min, max int) int {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+func clampWidth(value, lower, upper int) int {
+	return min(max(value, lower), upper)
 }
 
 func searchText(item archive.SearchResult) string {
@@ -207,10 +194,7 @@ func participantPreview(handles []string, total int64) string {
 		}
 		return ""
 	}
-	limit := len(handles)
-	if limit > 4 {
-		limit = 4
-	}
+	limit := min(len(handles), 4)
 	parts := append([]string{}, handles[:limit]...)
 	if remaining := int(total) - limit; remaining > 0 {
 		parts = append(parts, fmt.Sprintf("+%d more", remaining))

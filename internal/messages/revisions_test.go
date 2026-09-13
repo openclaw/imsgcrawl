@@ -255,3 +255,11 @@ func TestApplyRevisionDataReconstructsCurrentText(t *testing.T) {
 		})
 	}
 }
+
+func parseMessageSummaryInfo(data []byte) revisionState {
+	root, ok := messageSummaryRoot(data)
+	if !ok {
+		return revisionState{}
+	}
+	return parseMessageSummaryRoot(root)
+}

@@ -130,7 +130,7 @@ func printChatsText(w io.Writer, value chatListOutput) error {
 	}
 	width := textOutputWidth(w)
 	columns := chatTextColumns(width)
-	rows := tableRows(len(value.Items))
+	rows := make([][]string, 0, len(value.Items))
 	for _, item := range value.Items {
 		rows = append(rows, []string{
 			item.ChatID,
@@ -161,7 +161,7 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 	}
 	width := textOutputWidth(w)
 	columns := messageTextColumns(width)
-	rows := tableRows(len(value.Items))
+	rows := make([][]string, 0, len(value.Items))
 	for _, item := range value.Items {
 		rows = append(rows, []string{
 			formatAppleDate(item.Date),
@@ -186,7 +186,7 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 	}
 	width := textOutputWidth(w)
 	columns := searchTextColumns(width)
-	rows := tableRows(len(value.Items))
+	rows := make([][]string, 0, len(value.Items))
 	for _, item := range value.Items {
 		rows = append(rows, []string{
 			formatAppleDate(item.Date),
