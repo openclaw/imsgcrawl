@@ -3,7 +3,7 @@ package messages
 import (
 	"encoding/json"
 	"math"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -78,7 +78,7 @@ func parseMessageSummaryRoot(root map[string]any) revisionState {
 		for index := range indexes {
 			orderedIndexes = append(orderedIndexes, index)
 		}
-		sort.Slice(orderedIndexes, func(i, j int) bool { return orderedIndexes[i] < orderedIndexes[j] })
+		slices.Sort(orderedIndexes)
 		identity, err := json.Marshal(struct {
 			PartCount int     `json:"part_count"`
 			Edits     any     `json:"edits,omitempty"`
@@ -128,7 +128,7 @@ func reconstructCurrentText(root map[string]any, original string) (string, bool)
 			current.WriteString(text)
 			continue
 		}
-		if offset < 0 || offset > int64(len(originalUnits)) || length > int64(len(originalUnits))-offset {
+		if offset > int64(len(originalUnits)) || length > int64(len(originalUnits))-offset {
 			return "", false
 		}
 		current.WriteString(string(utf16.Decode(originalUnits[offset : offset+length])))
