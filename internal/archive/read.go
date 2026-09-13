@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Store) Status(ctx context.Context) (Status, error) {
-	status := Status{ArchivePath: s.path, ArchiveBytes: fileSize(s.path)}
+	status := Status{ArchivePath: s.path, ArchiveBytes: fileSize(s.store.Path())}
 	state, err := s.syncState(ctx)
 	if err != nil {
 		return Status{}, err

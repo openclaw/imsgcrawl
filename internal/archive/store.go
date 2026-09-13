@@ -27,7 +27,11 @@ func Exists(path string) bool {
 	if path == "" {
 		path = DefaultPath()
 	}
-	info, err := os.Stat(path)
+	filename, err := archiveFilename(path)
+	if err != nil {
+		return false
+	}
+	info, err := os.Stat(filename)
 	return err == nil && info.Mode().IsRegular()
 }
 

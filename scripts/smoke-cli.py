@@ -49,8 +49,8 @@ def smoke(binary, directory):
         db.executescript(SCHEMA)
     before = hashlib.sha256(source.read_bytes()).digest()
 
-    def run(*args, machine=True):
-        argv = [str(binary), "--db", str(source), "--archive", str(archive)]
+    def run(*args, machine=True, archive_path=archive):
+        argv = [str(binary), "--db", str(source), "--archive", str(archive_path)]
         if machine:
             argv.append("--json")
         result = subprocess.run(
@@ -63,6 +63,9 @@ def smoke(binary, directory):
     assert run("sync")["messages"] == 2
     assert run("sync")["mode"] == "merge"
     assert run("status")["state"] == "ok"
+    path_status = run("status", archive_path=str(archive) + " ")
+    assert path_status["archive"]["archive_bytes"] == archive.stat().st_size
+    assert path_status["archive"]["archive_path"] == str(archive) + " "
     assert run("chats")["items"][0]["message_count"] == 2
     assert run("messages", "--chat", "1")["returned"] == 2
     assert run("search", "orchard")["returned"] == 1

@@ -31,7 +31,7 @@ Capabilities: metadata, status, sync, chats, messages, search, contact-export
 
 ## Status and sync
 
-`status` checks whether the source and archive are readable and reports aggregate counts. It does not print message contents.
+`status` checks whether the source and archive are readable and reports aggregate counts. JSON also includes `archive.archive_bytes`, measured from the archive file actually opened. It does not print message contents.
 
 ```sh
 imsgcrawl status
