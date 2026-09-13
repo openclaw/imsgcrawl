@@ -3,7 +3,6 @@ package messages
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"os"
 	"strings"
 	"time"
@@ -85,7 +84,7 @@ func ExtractArchive(ctx context.Context, path string) (ArchiveData, error) {
 		return ArchiveData{}, err
 	}
 	defer func() { _ = st.Close() }()
-	if err := requireArchiveTables(ctx, st.DB()); err != nil {
+	if err := requireTables(ctx, st.DB(), "chat_message_join", "message_attachment_join"); err != nil {
 		return ArchiveData{}, err
 	}
 	info, err := os.Stat(snap.SourcePath)
@@ -120,20 +119,6 @@ func ExtractArchive(ctx context.Context, path string) (ArchiveData, error) {
 		return ArchiveData{}, err
 	}
 	return data, nil
-}
-
-func requireArchiveTables(ctx context.Context, db *sql.DB) error {
-	for _, table := range []string{"chat_message_join", "message_attachment_join"} {
-		var name string
-		err := db.QueryRowContext(ctx, tableExistsSQL, table).Scan(&name)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return errors.New("messages database is missing table " + table)
-			}
-			return err
-		}
-	}
-	return nil
 }
 
 func extractHandles(ctx context.Context, db *sql.DB) ([]Handle, error) {
