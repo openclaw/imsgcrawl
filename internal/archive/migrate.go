@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	ckstore "github.com/openclaw/crawlkit/store"
 	"github.com/openclaw/imsgcrawl/internal/messages"
@@ -30,12 +31,7 @@ func migrateTombstones(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("begin tombstone migration: %w", err)
 	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
+	defer tx.Rollback()
 	columns := map[string][]string{
 		"handles":           {"deleted_at text", "deletion_reason text"},
 		"chats":             {"deleted_at text", "deletion_reason text"},
@@ -81,14 +77,13 @@ date_edited, date_retracted, revision_data from messages order by source_rowid`)
 		return err
 	}
 	for _, message := range legacy {
-		if err := appendMessageEvent(ctx, tx, message, unixEpoch); err != nil {
+		if err := appendMessageEvent(ctx, tx, message, time.Unix(0, 0).UTC()); err != nil {
 			return fmt.Errorf("seed legacy message event: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit tombstone migration: %w", err)
 	}
-	committed = true
 	return nil
 }
 

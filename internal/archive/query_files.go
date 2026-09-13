@@ -51,9 +51,8 @@ func chatSummaryQuery(where string) string {
 	return strings.Replace(chatSummarySQL, "{{WHERE}}", where, 1)
 }
 
-func messagesQuery(order, tie, limitClause string) string {
+func messagesQuery(order, limitClause string) string {
 	query := strings.ReplaceAll(messagesListSQL, "{{ORDER}}", order)
-	query = strings.ReplaceAll(query, "{{TIE}}", tie)
 	return strings.Replace(query, "{{LIMIT}}", limitClause, 1)
 }
 
