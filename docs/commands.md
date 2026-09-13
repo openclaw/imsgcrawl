@@ -76,10 +76,10 @@ Chats: showing 4 of 4, newest first.
 Open: imsgcrawl messages --chat CHAT_ID
 
 chat  kind    msgs  latest            conversation
-4     group   1     2000-12-31 16:00  Cabinet Group (+15550103, opaque-handle, opaque123)
-3     direct  1     2000-12-31 16:00  +15550103
-2     direct  2     2000-12-31 16:00  Most Recent Name
-1     direct  1     2000-12-31 16:00  Older Name
+4     group   1     2000-12-31 16:05  Cabinet Group (+15550103, opaque-handle, opaque123)
+3     direct  1     2000-12-31 16:05  +15550103
+2     direct  2     2000-12-31 16:04  Most Recent Name
+1     direct  1     2000-12-31 16:01  Older Name
 ```
 
 ## Messages
@@ -98,7 +98,7 @@ Messages in Cabinet Group (+15550103, opaque-handle, opaque123) (chat 4): showin
 Search: imsgcrawl search QUERY
 
 date              from       text
-2000-12-31 16:00  +15550103  group fallback row
+2000-12-31 16:05  +15550103  group fallback row
 ```
 
 ## Search
@@ -116,7 +116,7 @@ Search "older hello": showing 1 of 1.
 Use --json when you need local chat IDs for follow-up commands.
 
 date              from        conversation  text
-2000-12-31 16:00  Older Name  Older Name    older hello
+2000-12-31 16:01  Older Name  Older Name    older hello
 ```
 
 ## Contacts
@@ -134,6 +134,8 @@ Most Recent Name  0015550100
 ```
 
 ## JSON output
+
+Dates in JSON retain their raw Messages values. Text output displays local time and recognizes both legacy seconds and modern nanoseconds since Apple's 2001 epoch.
 
 Place `--json` anywhere in the command line:
 
