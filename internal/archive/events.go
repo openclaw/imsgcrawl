@@ -63,7 +63,6 @@ func stableMessageIdentity(message messages.Message) string {
 }
 
 func appendDeletionEvent(ctx context.Context, tx *sql.Tx, guid string, sourceRowID int64, observedAt time.Time, reason string) error {
-	message := messages.Message{SourceRowID: sourceRowID, GUID: guid}
 	payload, err := json.Marshal(struct {
 		GUID   string `json:"guid"`
 		Reason string `json:"reason"`
@@ -74,8 +73,8 @@ func appendDeletionEvent(ctx context.Context, tx *sql.Tx, guid string, sourceRow
 	sum := sha256.Sum256(append([]byte("imsgcrawl.message-event.v1\x00message_deleted\x00"), payload...))
 	_, err = tx.ExecContext(ctx, `insert or ignore into message_events(
 event_key, message_guid, source_rowid, event_type, revision_at, payload_json, observed_at
-) values(?, ?, ?, 'message_deleted', 0, ?, ?)`, hex.EncodeToString(sum[:]), message.GUID,
-		message.SourceRowID, string(payload), observedAt.UTC().Format(time.RFC3339Nano))
+) values(?, ?, ?, 'message_deleted', 0, ?, ?)`, hex.EncodeToString(sum[:]), guid,
+		sourceRowID, string(payload), observedAt.UTC().Format(time.RFC3339Nano))
 	return err
 }
 
@@ -85,8 +84,6 @@ func messageEventType(message messages.Message) (string, int64) {
 		return "message_unsent", max(message.DateRetracted, message.RevisionAt)
 	case message.HasUnsentParts:
 		return "message_partial_unsent", max(message.DateEdited, message.DateRetracted, message.RevisionAt)
-	case message.DateRetracted > 0:
-		return "message_unsent", max(message.DateRetracted, message.RevisionAt)
 	case message.DateEdited > 0 || message.HasEdits:
 		return "message_edited", max(message.DateEdited, message.RevisionAt)
 	default:

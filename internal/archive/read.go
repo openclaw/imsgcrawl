@@ -50,10 +50,8 @@ func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool
 		return nil, err
 	}
 	order := "desc"
-	tie := "desc"
 	if asc {
 		order = "asc"
-		tie = "asc"
 	}
 	limitClause := ""
 	args := []any{id}
@@ -61,7 +59,7 @@ func (s *Store) Messages(ctx context.Context, chatID string, limit int, asc bool
 		limitClause = "limit ?"
 		args = append(args, limit)
 	}
-	rows, err := s.store.DB().QueryContext(ctx, messagesQuery(order, tie, limitClause), args...)
+	rows, err := s.store.DB().QueryContext(ctx, messagesQuery(order, limitClause), args...)
 	if err != nil {
 		return nil, err
 	}

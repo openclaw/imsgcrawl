@@ -24,5 +24,5 @@ left join (
 where cm.chat_rowid = ?
   and cm.deleted_at is null
   and m.deleted_at is null
-order by m.date {{ORDER}}, m.source_rowid {{TIE}}
+order by m.date {{ORDER}}, m.source_rowid {{ORDER}}
 {{LIMIT}}
