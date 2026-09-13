@@ -96,7 +96,7 @@ func messageTombstone(message messages.Message, syncedAt time.Time) (*string, st
 	if !messageIsFullyUnsent(message) {
 		return nil, ""
 	}
-	value := appleTime(message.DateRetracted)
+	value := messages.AppleTime(message.DateRetracted)
 	if value.IsZero() {
 		value = syncedAt.UTC()
 	}
@@ -106,17 +106,6 @@ func messageTombstone(message messages.Message, syncedAt time.Time) (*string, st
 
 func messageIsFullyUnsent(message messages.Message) bool {
 	return message.FullyUnsent || (message.DateRetracted > 0 && !message.HasUnsentParts)
-}
-
-func appleTime(value int64) time.Time {
-	if value <= 0 {
-		return time.Time{}
-	}
-	epoch := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
-	if value < 1_000_000_000_000 {
-		return epoch.Add(time.Duration(value) * time.Second)
-	}
-	return epoch.Add(time.Duration(value))
 }
 
 func tombstoneMessageGUID(ctx context.Context, tx *sql.Tx, guid string, observedAt time.Time) error {

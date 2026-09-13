@@ -14,7 +14,7 @@ Search "older hello": showing 1 of 1.
 Use --json when you need local chat IDs for follow-up commands.
 
 date              from        conversation  text
-2000-12-31 16:00  Older Name  Older Name    older hello
+2000-12-31 16:01  Older Name  Older Name    older hello
 ```
 
 The example uses synthetic fixture data. `imsgcrawl` keeps the source database and archive on the local machine.

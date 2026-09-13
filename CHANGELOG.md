@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Display legacy Messages timestamps stored in seconds correctly, using the same Apple-epoch conversion for CLI dates and archive retention.
+
 - Report archive availability and byte size from the same normalized filename used by sync and reads, including archive paths with trailing whitespace.
 
 - Update the SQLite libc runtime to v1.75.7 and verify macOS/Linux builds with race detection, synthetic CLI smoke tests, and complete frozen advisory scans; pin CI and release Actions to reviewed commits.

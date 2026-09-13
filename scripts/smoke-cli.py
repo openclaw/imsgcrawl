@@ -47,6 +47,7 @@ def smoke(binary, directory):
     source, archive = directory / "source.db", directory / "archive.db"
     with sqlite3.connect(source) as db:
         db.executescript(SCHEMA)
+        db.execute("update message set date=500000000 where rowid=1")
     before = hashlib.sha256(source.read_bytes()).digest()
 
     def run(*args, machine=True, archive_path=archive):
@@ -68,6 +69,8 @@ def smoke(binary, directory):
     assert path_status["archive"]["archive_path"] == str(archive) + " "
     assert run("chats")["items"][0]["message_count"] == 2
     assert run("messages", "--chat", "1")["returned"] == 2
+    assert "2016-11-05 00:53" in run("messages", "--chat", "1", machine=False)
+    assert run("messages", "--chat", "1", "--asc")["items"][0]["date"] == 500000000
     assert run("search", "orchard")["returned"] == 1
     for query in ("--help", "--json"):
         literal = run("search", "--", query)

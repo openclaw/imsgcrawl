@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/openclaw/crawlkit/control"
 	"github.com/openclaw/imsgcrawl/internal/archive"
+	"github.com/openclaw/imsgcrawl/internal/messages"
 )
 
 func (r *runtime) print(v any) error {
@@ -223,8 +223,7 @@ func formatAppleDate(value int64) string {
 	if value <= 0 {
 		return "-"
 	}
-	epoch := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
-	return epoch.Add(time.Duration(value)).Local().Format("2006-01-02 15:04")
+	return messages.AppleTime(value).Local().Format("2006-01-02 15:04")
 }
 
 func emptyDash(value string) string {
