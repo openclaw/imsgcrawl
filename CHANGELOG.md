@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update CrawlKit to v0.16.2 and refresh the devenv/Nixpkgs development shell inputs.
 - Keep smoke-transcript artifacts private (0700 directories, 0600 files). **Compatibility:** `--out-dir` must name a new directory; existing paths are refused to prevent overwrites and stale output.
 - Display legacy Messages timestamps stored in seconds correctly, using the same Apple-epoch conversion for CLI dates and archive retention.
 - Report archive availability and byte size from the same normalized filename used by sync and reads, including archive paths with trailing whitespace.

@@ -15,8 +15,8 @@ github.com/mattn/go-runewidth v0.0.30 h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjyb
 github.com/mattn/go-runewidth v0.0.30/go.mod h1:3qAiGCV4Koz/yuveO58qUefmUTRm8r0IGEXZ9jeHp/8=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
-github.com/openclaw/crawlkit v0.16.1 h1:O3tieu+RU7Z6uXTUhqgjeQejaK3Z13x6+CEzV35LiQc=
-github.com/openclaw/crawlkit v0.16.1/go.mod h1:JhEsXnoxozd2qp1p4Dw8ZhKzQoYm3WbrlvO0ILVx8cs=
+github.com/openclaw/crawlkit v0.16.2 h1:BTsO1tFPFodOU6uBxAsqYtwa4V3Y6s2cVmnBJAA65qU=
+github.com/openclaw/crawlkit v0.16.2/go.mod h1:jvlRvBupDvXNaACZ89+kwaCPO6/bdHoy2hLByfYdpWc=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 golang.org/x/mod v0.38.0 h1:MECBjubtXD7yj4HrhIUcywNaGeNVUdfVnxmPajOk4yk=
