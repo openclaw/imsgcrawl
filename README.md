@@ -89,7 +89,10 @@ go test ./...
 go vet ./...
 mkdir -p ./bin
 go build -trimpath -o ./bin/imsgcrawl ./cmd/imsgcrawl
+python3 scripts/smoke-cli.py ./bin/imsgcrawl
 ```
+
+The synthetic CLI smoke creates and removes its own temporary Messages database; it never reads your Messages data. CI runs it and the race-enabled Go suite on macOS and Linux.
 
 The optional devenv shell also provides Go, SQLite, and `jq`. See the [agent smoke transcript](docs/commands.md#agent-smoke-transcript) for an end-to-end local CLI check.
 

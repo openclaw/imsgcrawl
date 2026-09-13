@@ -15,7 +15,11 @@ concurrency:
 
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
       GOWORK: "off"
@@ -23,10 +27,10 @@ jobs:
       GOTOOLCHAIN: "local"
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27.1"
           cache: true
@@ -44,25 +48,32 @@ jobs:
           go mod tidy
           git diff --exit-code -- go.mod go.sum
 
+      - name: Formatting
+        run: test -z "$(gofmt -l cmd internal)"
+
       - name: Vet
         run: go vet ./...
 
       - name: Deadcode
         run: |
           output_file=$(mktemp)
-          go run golang.org/x/tools/cmd/deadcode@v0.50.0 -test ./... > "$output_file"
+          go run golang.org/x/tools/cmd/deadcode@v0.50.0 ./... > "$output_file"
+          go run golang.org/x/tools/cmd/deadcode@v0.50.0 -test ./... >> "$output_file"
           if [ -s "$output_file" ]; then
             cat "$output_file"
             exit 1
           fi
 
-      - name: Test
-        run: go test -count=1 ./...
+      - name: Test with race detector
+        run: go test -race -count=1 -timeout=120s ./...
 
       - name: Build
         run: |
           mkdir -p bin
           go build -trimpath -o bin/imsgcrawl ./cmd/imsgcrawl
+
+      - name: Built CLI smoke with synthetic Messages data
+        run: python3 scripts/smoke-cli.py bin/imsgcrawl
 
   minimum:
     runs-on: macos-latest
@@ -74,10 +85,10 @@ jobs:
       GOMAXPROCS: "2"
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup minimum Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27.0"
           cache: true
@@ -99,7 +110,15 @@ jobs:
         run: go test -count=1 -p=1 -timeout=120s ./...
 
   vulnerabilities:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            goos: darwin
+          - os: ubuntu-latest
+            goos: linux
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
       GOWORK: "off"
@@ -109,10 +128,10 @@ jobs:
       GOFLAGS: "-mod=readonly -p=1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup preferred Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27.1"
           cache: true
@@ -132,10 +151,10 @@ jobs:
       - name: Scan preferred native configuration
         id: preferred
         continue-on-error: true
-        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-preferred" go1.27.1 darwin
+        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-preferred" go1.27.1 ${{ matrix.goos }}
 
       - name: Setup minimum Go for separate advisory qualification
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27.0"
           cache: true
@@ -143,13 +162,13 @@ jobs:
       - name: Scan minimum native configuration
         id: minimum
         continue-on-error: true
-        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-minimum" go1.27.0 darwin
+        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-minimum" go1.27.0 ${{ matrix.goos }}
 
       - name: Retain complete advisory evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: darwin-vulnerability-evidence
+          name: ${{ matrix.goos }}-vulnerability-evidence
           path: |
             ${{ runner.temp }}/vulndb
             ${{ runner.temp }}/vuln-preferred
