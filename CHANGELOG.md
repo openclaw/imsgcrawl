@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 0.3.0 - 2026-09-13
 
 **Highlights:** Legacy Messages timestamps display correctly, smoke transcripts stay private, and `--out-dir` now refuses existing directories.
