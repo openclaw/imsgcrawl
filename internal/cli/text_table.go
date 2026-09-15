@@ -214,7 +214,21 @@ func compactCellText(value string) string {
 
 func normalizeCellText(value string) string {
 	value = strings.ReplaceAll(value, "\r\n", "\n")
-	return strings.ReplaceAll(value, "\r", "\n")
+	return escapeTerminalControls(strings.ReplaceAll(value, "\r", "\n"), true)
+}
+
+// Escape controls before measuring cells so source text cannot drive a terminal.
+func escapeTerminalControls(value string, preserveLayout bool) string {
+	var out strings.Builder
+	for _, r := range value {
+		if unicode.IsControl(r) && !(preserveLayout && (r == '\n' || r == '\t')) {
+			quoted := strconv.QuoteRune(r)
+			out.WriteString(quoted[1 : len(quoted)-1])
+		} else {
+			out.WriteRune(r)
+		}
+	}
+	return out.String()
 }
 
 func textColumnWidth(totalWidth int, fixedColumns ...int) int {

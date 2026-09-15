@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Escape terminal control characters in message text, conversation names, contacts, and status paths while preserving the original strings in JSON output.
+
 ## 0.3.0 - 2026-09-13
 
 **Highlights:** Legacy Messages timestamps display correctly, smoke transcripts stay private, and `--out-dir` now refuses existing directories.
