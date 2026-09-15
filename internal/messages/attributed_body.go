@@ -23,14 +23,12 @@ func decodeAttributedBodyValue(body []byte) (string, bool) {
 	if !ok || textLen < 0 || pos > len(body) {
 		return "", false
 	}
-	for pos < len(body) && (body[pos] == 0x00 || body[pos] == 0x92 || (body[pos] >= 0x80 && body[pos] <= 0xbf)) {
-		pos++
-	}
+	// The length is followed immediately by payload bytes, including any NULs.
 	if pos > len(body) || textLen > len(body)-pos {
 		return "", false
 	}
 	end := pos + textLen
-	return cleanDecodedText(body[pos:end]), true
+	return cleanDecodedText(body[pos:end])
 }
 
 func decodeStreamtypedLength(body []byte, pos int) (int, int, bool) {
@@ -66,18 +64,17 @@ func decodeStreamtypedLength(body []byte, pos int) (int, int, bool) {
 	return int(n), pos + width, true
 }
 
-func cleanDecodedText(raw []byte) string {
+func cleanDecodedText(raw []byte) (string, bool) {
 	if len(raw) >= 2 && raw[0] == 0xff && raw[1] == 0xfe {
-		return decodeUTF16(raw[2:], true)
+		return decodeUTF16(raw[2:], true), true
 	}
 	if len(raw) >= 2 && raw[0] == 0xfe && raw[1] == 0xff {
-		return decodeUTF16(raw[2:], false)
+		return decodeUTF16(raw[2:], false), true
 	}
-	text := string(raw)
-	for len(text) > 0 && !utf8.ValidString(text) {
-		text = text[:len(text)-1]
+	if !utf8.Valid(raw) {
+		return "", false
 	}
-	return text
+	return string(raw), true
 }
 
 func decodeUTF16(raw []byte, littleEndian bool) string {

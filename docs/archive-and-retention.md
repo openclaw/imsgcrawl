@@ -22,6 +22,8 @@ Message revisions are append-only events with deterministic identities. The curr
 
 Per-part `ec` edit history and `rp` retractions distinguish partial changes from fully unsent messages. The archive reconstructs the visible body from the latest edited parts while omitting retracted parts, so withdrawn text is not indexed. Unrelated summary metadata does not create revisions.
 
+Attributed bodies preserve the complete encoded text, including leading NUL characters. Malformed UTF-8 bodies are treated as unavailable rather than accepted as a truncated prefix. A merge retains previously archived text when an unedited body becomes unreadable; an undecodable known edit is omitted from current text and search until a readable current body is available.
+
 ## Paths
 
 The defaults are:

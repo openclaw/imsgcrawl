@@ -102,8 +102,31 @@ def smoke(binary, directory):
     result = run("search", "orchard")
     assert result["items"][0]["text"] == body
     assert result["items"][0]["chat_title"] == name
+
+    def typed_body(payload):
+        return b"\x04\x0bstreamtyped\x84\x01+" + bytes([len(payload)]) + payload + b"\x86"
+
+    with sqlite3.connect(source) as db:
+        db.execute("update message set text = null, attributedBody = ? where rowid = 1",
+                   (typed_body(b"\x00hello"),))
+    run("sync")
+    assert run("messages", "--chat", "1", "--asc")["items"][0]["text"] == "\x00hello"
+    with sqlite3.connect(source) as db:
+        db.execute("update message set attributedBody = ? where rowid = 1",
+                   (typed_body(b"prefix\xfftail"),))
+    run("sync")
+    assert run("messages", "--chat", "1", "--asc")["items"][0]["text"] == "\x00hello"
+    with sqlite3.connect(source) as db:
+        db.execute("update message set attributedBody = ?, date_edited = ? where rowid = 1",
+                   (typed_body(b"prefix\xfftail"), 800000000000000001))
+    before = hashlib.sha256(source.read_bytes()).digest()
+    run("sync")
+    assert run("messages", "--chat", "1", "--asc")["items"][0].get("text", "") == ""
+    assert run("search", "prefix")["returned"] == 0
+    assert hashlib.sha256(source.read_bytes()).digest() == before
     print("PASS: synthetic CLI metadata, merge, status, chats, messages, search, "
-          "contacts, text/JSON, restore and terminal controls; source bytes unchanged.")
+          "contacts, text/JSON, restore, terminal controls and attributed bodies; "
+          "source bytes unchanged.")
 
 
 if __name__ == "__main__":
