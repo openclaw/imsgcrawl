@@ -91,7 +91,7 @@ imsgcrawl messages --chat 4 --asc
 imsgcrawl messages --chat 4 --all
 ```
 
-The default limit is 20, ordered newest first. Message bodies stay in the `text` column and are not truncated; row limits control output size.
+The default limit is 20, ordered newest first. Message bodies stay in the `text` column and are not truncated; row limits control output size. Text tables escape terminal control characters before wrapping, while preserving readable Unicode, newlines, and tabs. Conversation headings and contact names also escape controls and collapse whitespace onto one line. JSON retains the original strings.
 
 ```text
 Messages in Cabinet Group (+15550103, opaque-handle, opaque123) (chat 4): showing 1 of 1, newest-first.

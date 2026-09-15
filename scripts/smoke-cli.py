@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import unicodedata
 
 
 SCHEMA = """
@@ -86,8 +87,23 @@ def smoke(binary, directory):
         assert run(*args, machine=False).strip()
     assert run("sync", "--restore")["mode"] == "restore"
     assert hashlib.sha256(source.read_bytes()).digest() == before
+
+    name = "Synthetic\x1b[2J Friend"
+    body = "orchard \x1b]52;c;c3ludGhldGlj\x07 \u009b31m café 😀\b\x7f"
+    with sqlite3.connect(source) as db:
+        db.execute("update chat set display_name = ?", (name,))
+        db.execute("update message set text = ? where rowid = 1", (body,))
+    run("sync")
+    for args in (("chats",), ("messages", "--chat", "1"),
+                 ("search", "orchard"), ("contacts", "export")):
+        output = run(*args, machine=False)
+        assert not any(unicodedata.category(c) == "Cc" and c not in "\n\t"
+                       for c in output), repr(output)
+    result = run("search", "orchard")
+    assert result["items"][0]["text"] == body
+    assert result["items"][0]["chat_title"] == name
     print("PASS: synthetic CLI metadata, merge, status, chats, messages, search, "
-          "contacts, text/JSON and restore; source bytes unchanged.")
+          "contacts, text/JSON, restore and terminal controls; source bytes unchanged.")
 
 
 if __name__ == "__main__":

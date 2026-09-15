@@ -74,7 +74,7 @@ Add `--json` anywhere in the command line for stable fields and local IDs:
 imsgcrawl --json chats --limit 20 | jq '.items[0]'
 ```
 
-Text output is for local reading; JSON is for scripts, tests, CrawlBar, and other CrawlKit consumers. The [command reference](docs/commands.md#json-output) shows the response envelope.
+Text output is for local reading and renders terminal controls in source text as visible escapes (for example, `\x1b`), so messages and names cannot execute terminal escape sequences. JSON preserves the original strings for scripts, tests, CrawlBar, and other CrawlKit consumers. The [command reference](docs/commands.md#json-output) shows the response envelope.
 
 ## Privacy
 

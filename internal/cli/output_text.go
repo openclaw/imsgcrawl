@@ -75,7 +75,7 @@ func printManifestText(w io.Writer, value control.Manifest) error {
 
 func printSyncText(w io.Writer, value archive.SyncResult) error {
 	_, err := fmt.Fprintf(w, "Sync complete (%s)\n\nMessages source:\n  Database: %s\n  Modified: %s\n  Size: %d bytes\n\nLocal archive:\n  Database: %s\n  Synced: %s\n\nImported rows:\n  Handles: %d\n  Chats: %d\n  Participants: %d\n  Chat-message links: %d\n  Messages: %d\n",
-		value.Mode, value.SourcePath, emptyDash(value.SourceModifiedAt), value.SourceBytes, value.ArchivePath, value.SyncedAt, value.Handles, value.Chats, value.Participants, value.ChatMessages, value.Messages)
+		value.Mode, escapeTerminalControls(value.SourcePath, false), emptyDash(value.SourceModifiedAt), value.SourceBytes, escapeTerminalControls(value.ArchivePath, false), value.SyncedAt, value.Handles, value.Chats, value.Participants, value.ChatMessages, value.Messages)
 	return err
 }
 
@@ -84,12 +84,12 @@ func printStatusText(w io.Writer, value statusOutput) error {
 		return err
 	}
 	if value.Source != nil {
-		if _, err := fmt.Fprintf(w, "\nMessages source:\n  Database: %s\n  Handles: %d\n  Chats: %d\n  Messages: %d\n", value.Source.DatabasePath, value.Source.Handles, value.Source.Chats, value.Source.Messages); err != nil {
+		if _, err := fmt.Fprintf(w, "\nMessages source:\n  Database: %s\n  Handles: %d\n  Chats: %d\n  Messages: %d\n", escapeTerminalControls(value.Source.DatabasePath, false), value.Source.Handles, value.Source.Chats, value.Source.Messages); err != nil {
 			return err
 		}
 	}
 	if value.Archive != nil {
-		if _, err := fmt.Fprintf(w, "\nLocal archive:\n  Database: %s\n  Last sync: %s\n  Handles: %d\n  Chats: %d\n  Participants: %d\n  Chat-message links: %d\n  Messages: %d\n", value.Archive.ArchivePath, emptyDash(value.Archive.LastSyncAt), value.Archive.Handles, value.Archive.Chats, value.Archive.Participants, value.Archive.ChatMessages, value.Archive.Messages); err != nil {
+		if _, err := fmt.Fprintf(w, "\nLocal archive:\n  Database: %s\n  Last sync: %s\n  Handles: %d\n  Chats: %d\n  Participants: %d\n  Chat-message links: %d\n  Messages: %d\n", escapeTerminalControls(value.Archive.ArchivePath, false), emptyDash(value.Archive.LastSyncAt), value.Archive.Handles, value.Archive.Chats, value.Archive.Participants, value.Archive.ChatMessages, value.Archive.Messages); err != nil {
 			return err
 		}
 	}
@@ -98,7 +98,7 @@ func printStatusText(w io.Writer, value statusOutput) error {
 			return err
 		}
 		for _, warning := range value.Warnings {
-			if _, err := fmt.Fprintf(w, "  - %s\n", warning); err != nil {
+			if _, err := fmt.Fprintf(w, "  - %s\n", escapeTerminalControls(warning, false)); err != nil {
 				return err
 			}
 		}
@@ -108,7 +108,7 @@ func printStatusText(w io.Writer, value statusOutput) error {
 			return err
 		}
 		for _, msg := range value.Errors {
-			if _, err := fmt.Fprintf(w, "  - %s\n", msg); err != nil {
+			if _, err := fmt.Fprintf(w, "  - %s\n", escapeTerminalControls(msg, false)); err != nil {
 				return err
 			}
 		}
@@ -148,7 +148,7 @@ func printMessagesText(w io.Writer, value messageListOutput) error {
 	if value.Chat != nil {
 		conversation = chatConversation(*value.Chat)
 	}
-	if _, err := fmt.Fprintf(w, "Messages in %s (chat %s): showing %d of %d, %s.\n", conversation, value.ChatID, value.Returned, value.Total, value.Order); err != nil {
+	if _, err := fmt.Fprintf(w, "Messages in %s (chat %s): showing %d of %d, %s.\n", compactCellText(conversation), value.ChatID, value.Returned, value.Total, value.Order); err != nil {
 		return err
 	}
 	if !value.Complete {
@@ -200,7 +200,7 @@ func printSearchText(w io.Writer, value searchListOutput) error {
 
 func printContactsText(w io.Writer, value control.ContactExport) error {
 	for _, contact := range value.Contacts {
-		_, err := fmt.Fprintf(w, "%s\t%s\n", contact.DisplayName, strings.Join(contact.PhoneNumbers, ","))
+		_, err := fmt.Fprintf(w, "%s\t%s\n", compactCellText(contact.DisplayName), compactCellText(strings.Join(contact.PhoneNumbers, ",")))
 		if err != nil {
 			return err
 		}
