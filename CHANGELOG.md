@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve leading NUL bytes in attributed message bodies, reject malformed UTF-8 instead of silently truncating it, and retain previously archived text when an unedited body becomes unreadable.
 - Escape terminal control characters in message text, conversation names, contacts, and status paths while preserving the original strings in JSON output.
 
 ## 0.3.0 - 2026-09-13

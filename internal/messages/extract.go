@@ -210,13 +210,15 @@ func extractMessages(ctx context.Context, db *sql.DB) ([]Message, error) {
 		if err := rows.Scan(&m.SourceRowID, &m.GUID, &m.HandleRowID, &m.Date, &m.Service, &fromMe, &m.Text, &attributedBody, &hasAttachments, &m.DateEdited, &m.DateRetracted, &m.RevisionData); err != nil {
 			return nil, err
 		}
-		if m.Text == "" {
+		m.TextAvailable = true
+		if m.Text == "" && len(attributedBody) > 0 {
+			m.TextAvailable = false
 			if text, ok := decodeAttributedBodyValue(attributedBody); ok {
 				m.Text = text
+				m.TextAvailable = true
 				m.TextIsCurrent = true
 			}
 		}
-		m.TextAvailable = true
 		m.IsFromMe = fromMe != 0
 		m.HasAttachments = hasAttachments != 0
 		m.DateEditedAvailable = availability.DateEdited
