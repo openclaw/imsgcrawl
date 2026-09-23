@@ -28,6 +28,36 @@ func TestDecodeAttributedBodyRejectsMalformedUTF8(t *testing.T) {
 	}
 }
 
+func TestDecodeAttributedBodyUTF16(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+		ok   bool
+	}{
+		{"little endian", "\xff\xfe\x00\x00A\x00\x3d\xd8\x00\xde\xfd\xff", "\x00A😀�", true},
+		{"big endian", "\xfe\xff\x00\x00\x00A\xd8\x3d\xde\x00\xff\xfd", "\x00A😀�", true},
+		{"empty little endian", "\xff\xfe", "", true},
+		{"empty big endian", "\xfe\xff", "", true},
+		{"odd little endian", "\xff\xfeA\x00B", "", false},
+		{"odd big endian", "\xfe\xff\x00A\x00", "", false},
+		{"unpaired high little endian", "\xff\xfeA\x00\x3d\xd8", "", false},
+		{"unpaired high big endian", "\xfe\xff\x00A\xd8\x3d", "", false},
+		{"unpaired low little endian", "\xff\xfeA\x00\x00\xde", "", false},
+		{"unpaired low big endian", "\xfe\xff\x00A\xde\x00", "", false},
+		{"high then ordinary", "\xff\xfe\x3d\xd8A\x00", "", false},
+		{"high then high", "\xfe\xff\xd8\x3d\xd8\x3d", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := decodeAttributedBodyValue(makeStreamtypedAttributedBody(tt.raw))
+			if got != tt.want || ok != tt.ok {
+				t.Fatalf("decoded %q, available=%v; want %q, available=%v", got, ok, tt.want, tt.ok)
+			}
+		})
+	}
+}
+
 func FuzzDecodeAttributedBodyRoundTrip(f *testing.F) {
 	for _, text := range []string{"", "\x00", "\x00hello", "\x00\x00hello", "café 😀", "\ufeffhello", "hello\x00tail"} {
 		f.Add(text)
