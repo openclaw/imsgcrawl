@@ -2,9 +2,13 @@
 
 ## Unreleased
 
-- Reject incomplete UTF-16 attributed bodies and unpaired surrogates instead of overwriting archived text with truncated or substituted content.
-- Preserve leading NUL bytes in attributed message bodies, reject malformed UTF-8 instead of silently truncating it, and retain previously archived text when an unedited body becomes unreadable.
+## 0.3.1 - 2026-09-22
+
+**Highlights:** Source text cannot execute terminal controls, and malformed attributed bodies no longer replace archived text with truncated or substituted content.
+
 - Escape terminal control characters in message text, conversation names, contacts, and status paths while preserving the original strings in JSON output.
+- Preserve leading NUL bytes in attributed message bodies, reject malformed UTF-8 instead of silently truncating it, and retain previously archived text when an unedited body becomes unreadable.
+- Reject incomplete UTF-16 attributed bodies and unpaired surrogates instead of overwriting archived text with truncated or substituted content.
 
 ## 0.3.0 - 2026-09-13
 
