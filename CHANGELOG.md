@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update CrawlKit to v0.16.6, retaining SQLite v1.59.0 and libc v1.75.7.
+
 ## 0.3.1 - 2026-09-22
 
 **Highlights:** Source text cannot execute terminal controls, and malformed attributed bodies no longer replace archived text with truncated or substituted content.
