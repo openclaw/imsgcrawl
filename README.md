@@ -29,7 +29,7 @@ To build from source, install Go 1.27.0 or newer and run:
 go install github.com/openclaw/imsgcrawl/cmd/imsgcrawl@latest
 ```
 
-The source minimum is Go 1.27.0. Repository builds prefer Go 1.27.1 through the `toolchain` directive in `go.mod`; Go selects it automatically when toolchain switching is enabled. New macOS source builds require macOS 13 or newer; this does not change the requirements of previously released binaries.
+The source minimum is Go 1.27.0. Repository builds prefer the patched Go 1.27.2 through the `toolchain` directive in `go.mod`; Go selects it automatically when toolchain switching is enabled. CI uses that patched compiler while checking the unchanged source directive. New macOS source builds require macOS 13 or newer; this does not change the requirements of previously released binaries.
 
 ## Quick start
 
@@ -95,6 +95,8 @@ python3 -B scripts/test_smoke_transcript.py
 ```
 
 The synthetic CLI smoke creates and removes its own temporary Messages database; it never reads your Messages data. CI runs it and the race-enabled Go suite on macOS and Linux.
+
+macOS CI uses the Apple Silicon `xcode-27` runner, checks both release architectures against the macOS 13 minimum, and runs the Intel binary under Rosetta. Release preflight uses the pinned shared workflow with `dry_run=true` to build, sign, notarize and verify without creating tags or publishing.
 
 The transcript-script tests use synthetic command output and require Bash and `jq`.
 

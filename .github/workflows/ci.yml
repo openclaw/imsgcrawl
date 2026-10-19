@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [xcode-27, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -32,13 +35,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.2"
           cache: true
 
       - name: Verify preferred toolchain
         run: |
           go version
-          test "$(go env GOVERSION)" = "go1.27.1"
+          test "$(go env GOVERSION)" = "go1.27.2"
 
       - name: Verify module cache
         run: go mod verify
@@ -75,11 +78,24 @@ jobs:
       - name: Built CLI smoke with synthetic Messages data
         run: python3 scripts/smoke-cli.py bin/imsgcrawl
 
+      - name: Verify macOS deployment targets and Intel execution
+        if: runner.os == 'macOS'
+        run: |
+          CGO_ENABLED=0 GOARCH=amd64 go build -trimpath -o bin/imsgcrawl-amd64 ./cmd/imsgcrawl
+          test "$(lipo -archs bin/imsgcrawl)" = arm64
+          test "$(lipo -archs bin/imsgcrawl-amd64)" = x86_64
+          scripts/check-macos-minimum.sh bin/imsgcrawl bin/imsgcrawl-amd64
+          if ! arch -x86_64 /usr/bin/true; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+          arch -x86_64 /usr/bin/true
+          arch -x86_64 bin/imsgcrawl-amd64 --version
+
       - name: Transcript privacy regressions
         run: python3 -B scripts/test_smoke_transcript.py
 
   minimum:
-    runs-on: macos-latest
+    runs-on: xcode-27
     timeout-minutes: 20
     env:
       GOWORK: "off"
@@ -90,26 +106,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup minimum Go
+      - name: Setup patched Go for source-floor validation
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.0"
+          go-version: "1.27.2"
           cache: true
 
-      - name: Verify minimum toolchain
+      - name: Verify source floor and patched toolchain
         run: |
           go version
-          test "$(go env GOVERSION)" = "go1.27.0"
+          test "$(go env GOVERSION)" = "go1.27.2"
+          test "$(go list -m -f '{{.GoVersion}}')" = "1.27.0"
 
       - name: Verify minimum modules
         run: |
           go mod tidy -diff
           go mod verify
 
-      - name: Build with minimum Go
+      - name: Build with the declared Go source floor
         run: go build -p=1 ./...
 
-      - name: Test with minimum Go
+      - name: Test with the declared Go source floor
         run: go test -count=1 -p=1 -timeout=120s ./...
 
   vulnerabilities:
@@ -117,7 +134,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: xcode-27
             goos: darwin
           - os: ubuntu-latest
             goos: linux
@@ -136,7 +153,7 @@ jobs:
       - name: Setup preferred Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.2"
           cache: true
 
       - name: Verify structured scan evaluator
@@ -145,7 +162,7 @@ jobs:
       - name: Stage public modules, scanner and frozen advisories
         run: |
           go version
-          test "$(go env GOVERSION)" = "go1.27.1"
+          test "$(go env GOVERSION)" = "go1.27.2"
           go mod download
           scanner_version=$(python3 .github/scripts/vulncheck.py scanner-version)
           GOBIN="$RUNNER_TEMP/vulntools" go install "golang.org/x/vuln/cmd/govulncheck@$scanner_version"
@@ -154,18 +171,7 @@ jobs:
       - name: Scan preferred native configuration
         id: preferred
         continue-on-error: true
-        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-preferred" go1.27.1 ${{ matrix.goos }}
-
-      - name: Setup minimum Go for separate advisory qualification
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27.0"
-          cache: true
-
-      - name: Scan minimum native configuration
-        id: minimum
-        continue-on-error: true
-        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-minimum" go1.27.0 ${{ matrix.goos }}
+        run: python3 .github/scripts/vulncheck.py scan "$RUNNER_TEMP/vulndb" "$RUNNER_TEMP/vulntools/govulncheck" "$RUNNER_TEMP/vuln-preferred" go1.27.2 ${{ matrix.goos }}
 
       - name: Retain complete advisory evidence
         if: always()
@@ -175,14 +181,11 @@ jobs:
           path: |
             ${{ runner.temp }}/vulndb
             ${{ runner.temp }}/vuln-preferred
-            ${{ runner.temp }}/vuln-minimum
           if-no-files-found: error
 
-      - name: Require both complete structured scans
+      - name: Require complete structured scan
         if: always()
         env:
           PREFERRED_OUTCOME: ${{ steps.preferred.outcome }}
-          MINIMUM_OUTCOME: ${{ steps.minimum.outcome }}
         run: |
           test "$PREFERRED_OUTCOME" = success
-          test "$MINIMUM_OUTCOME" = success

@@ -12,6 +12,7 @@ builds:
     no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
+      - MACOSX_DEPLOYMENT_TARGET=13.0
     flags:
       - -trimpath
     ldflags:
