@@ -29,7 +29,7 @@ To build from source, install Go 1.27.0 or newer and run:
 go install github.com/openclaw/imsgcrawl/cmd/imsgcrawl@latest
 ```
 
-The source minimum is Go 1.27.0. Repository builds prefer the patched Go 1.27.2 through the `toolchain` directive in `go.mod`; Go selects it automatically when toolchain switching is enabled. CI uses that patched compiler while checking the unchanged source directive. New macOS source builds require macOS 13 or newer; this does not change the requirements of previously released binaries.
+The source minimum is Go 1.27.0. Repository builds prefer the patched Go 1.27.3 through the `toolchain` directive in `go.mod`; Go selects it automatically when toolchain switching is enabled. CI uses that patched compiler while checking the unchanged source directive. New macOS source builds require macOS 13 or newer; this does not change the requirements of previously released binaries.
 
 ## Quick start
 
