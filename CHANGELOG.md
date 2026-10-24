@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update CrawlKit to v0.17.3 so SQLite lock waits honor context deadlines, with SQLite 3.54.1.
+
 - Security: build source, CI, advisory scans, and releases with Go 1.27.3 for the GO-2026-6809 certificate-validation fix, retaining the Go 1.27.0 source minimum.
 
 - Move macOS CI and release verification to macOS 27, preserve the macOS 13 and Go 1.27.0 source floors, and use patched Go 1.27.2 for builds and advisory scans.
