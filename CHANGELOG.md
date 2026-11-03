@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Batch main CodeQL analysis weekly while preserving PR and manual scans.
+
 ## 0.3.2 - 2026-10-26
 
 **Highlights:** SQLite lock waits now honor cancellation deadlines, and releases include the Go certificate-validation security fix.
