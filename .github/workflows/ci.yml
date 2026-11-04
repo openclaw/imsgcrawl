@@ -38,10 +38,11 @@ jobs:
           go-version: "1.27.3"
           cache: true
 
-      - name: Verify preferred toolchain
+      - name: Verify preferred toolchain and source floor
         run: |
           go version
           test "$(go env GOVERSION)" = "go1.27.3"
+          test "$(go list -m -f '{{.GoVersion}}')" = "1.27.0"
 
       - name: Verify module cache
         run: go mod verify
@@ -72,6 +73,7 @@ jobs:
 
       - name: Build
         run: |
+          go build ./...
           mkdir -p bin
           go build -trimpath -o bin/imsgcrawl ./cmd/imsgcrawl
 
@@ -93,41 +95,6 @@ jobs:
 
       - name: Transcript privacy regressions
         run: python3 -B scripts/test_smoke_transcript.py
-
-  minimum:
-    runs-on: xcode-27
-    timeout-minutes: 20
-    env:
-      GOWORK: "off"
-      GOENV: "off"
-      GOTOOLCHAIN: "local"
-      GOMAXPROCS: "2"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup patched Go for source-floor validation
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27.3"
-          cache: true
-
-      - name: Verify source floor and patched toolchain
-        run: |
-          go version
-          test "$(go env GOVERSION)" = "go1.27.3"
-          test "$(go list -m -f '{{.GoVersion}}')" = "1.27.0"
-
-      - name: Verify minimum modules
-        run: |
-          go mod tidy -diff
-          go mod verify
-
-      - name: Build with the declared Go source floor
-        run: go build -p=1 ./...
-
-      - name: Test with the declared Go source floor
-        run: go test -count=1 -p=1 -timeout=120s ./...
 
   vulnerabilities:
     strategy:

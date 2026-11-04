@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Check the Go source floor in the existing native test matrix instead of repeating macOS setup, module checks, builds, and tests in a separate job.
+
 - Batch main CodeQL analysis weekly while preserving PR and manual scans.
 
 ## 0.3.2 - 2026-10-26
