@@ -1,5 +1,6 @@
 """Check smoke transcript ownership without reading any real Messages data."""
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -37,6 +38,36 @@ class SmokeTranscriptTests(unittest.TestCase):
         self.assertTrue(list((output / "raw").glob("*.stdout")))
         for path in [output, *output.rglob("*")]:
             self.assertEqual(path.stat().st_mode & 0o077, 0, str(path))
+
+    def test_step_headers_match_manifest(self):
+        output = self.root / "output with spaces"
+        (self.root / "bin" / "imsgcrawl").write_text(
+            "#!/bin/sh\n"
+            "if [ \"$1\" = --version ]; then printf 'synthetic failure\\n' >&2; exit 7; fi\n"
+            "printf '%s\\n' '{\"items\":[]}'\n"
+        )
+        result = self.run_smoke(output)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        entries = [json.loads(line) for line in (output / "manifest.jsonl").read_text().splitlines()]
+        self.assertGreater(len(entries), 1)
+        self.assertEqual(entries[0]["exit_code"], 7)
+        review = (output / "review.txt").read_text()
+        transcript = (output / "transcript.txt").read_text()
+        for entry in entries:
+            header = (
+                "\n" + "=" * 80 + "\n"
+                f"[{entry['id']}] {entry['name']}\n"
+                + "=" * 80 + "\n"
+                f"command: {entry['command']}\n"
+                f"exit_code: {entry['exit_code']}\n"
+                f"stdout_file: {entry['stdout_file']}\n"
+                f"stderr_file: {entry['stderr_file']}\n"
+                f"stdout_bytes: {entry['stdout_bytes']}\n"
+                f"stderr_bytes: {entry['stderr_bytes']}\n"
+            )
+            with self.subTest(step=entry["id"]):
+                self.assertEqual(review.count(header), 1)
+                self.assertEqual(transcript.count(header), 1)
 
     def test_existing_directory_is_untouched(self):
         output = self.root / "existing"
