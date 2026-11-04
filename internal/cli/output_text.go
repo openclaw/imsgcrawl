@@ -93,24 +93,22 @@ func printStatusText(w io.Writer, value statusOutput) error {
 			return err
 		}
 	}
-	if len(value.Warnings) > 0 {
-		if _, err := io.WriteString(w, "\nWarnings:\n"); err != nil {
-			return err
-		}
-		for _, warning := range value.Warnings {
-			if _, err := fmt.Fprintf(w, "  - %s\n", escapeTerminalControls(warning, false)); err != nil {
-				return err
-			}
-		}
+	if err := printStatusMessages(w, "Warnings", value.Warnings); err != nil {
+		return err
 	}
-	if len(value.Errors) > 0 {
-		if _, err := io.WriteString(w, "\nErrors:\n"); err != nil {
+	return printStatusMessages(w, "Errors", value.Errors)
+}
+
+func printStatusMessages(w io.Writer, heading string, messages []string) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	if _, err := io.WriteString(w, "\n"+heading+":\n"); err != nil {
+		return err
+	}
+	for _, message := range messages {
+		if _, err := fmt.Fprintf(w, "  - %s\n", escapeTerminalControls(message, false)); err != nil {
 			return err
-		}
-		for _, msg := range value.Errors {
-			if _, err := fmt.Fprintf(w, "  - %s\n", escapeTerminalControls(msg, false)); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
