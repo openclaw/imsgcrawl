@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,6 +34,7 @@ create table fixture(value text); insert into fixture values('committed in WAL')
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = snapshot.Close() })
 	private, err := store.OpenReadOnly(context.Background(), snapshot.Path)
 	if err != nil {
 		t.Fatal(err)
@@ -42,6 +44,15 @@ create table fixture(value text); insert into fixture values('committed in WAL')
 		t.Fatalf("snapshot value = %q, err = %v", got, err)
 	}
 	_ = private.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	cancelled, err := SnapshotPathContext(ctx, source)
+	if err == nil {
+		_ = cancelled.Close()
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled snapshot error = %v, want context.Canceled", err)
+	}
 	for suffix, want := range before {
 		after, err := os.ReadFile(source + suffix)
 		if err != nil || !bytes.Equal(after, want) {
@@ -57,17 +68,12 @@ create table fixture(value text); insert into fixture values('committed in WAL')
 	}
 }
 
-func TestSnapshotPathRejectsCorruptionAndCancellation(t *testing.T) {
+func TestSnapshotPathRejectsCorruption(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "chat.db")
 	if err := os.WriteFile(source, []byte("not a database"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := SnapshotPathContext(context.Background(), source); err == nil {
 		t.Fatal("corrupt source accepted")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if _, err := SnapshotPathContext(ctx, source); err == nil {
-		t.Fatal("cancelled snapshot accepted")
 	}
 }

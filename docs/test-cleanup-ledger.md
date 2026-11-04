@@ -28,3 +28,14 @@ No production behavior or release artifacts changed.
 Validation: race-enabled archive tests, full module tests and vet, built-CLI
 synthetic smoke, and CI. No production code, live Messages data, or release
 artifacts changed.
+
+## Snapshot cancellation fixture
+
+- Removed the cancellation check against an already-corrupt SQLite file: any
+  corruption error satisfied it, even when the snapshot wrapper ignored context.
+- Reuse the valid WAL snapshot fixture and require `context.Canceled`. Keep the
+  committed-row, source-byte preservation, corruption, and owned-directory cleanup
+  checks. Close any unexpectedly successful cancellation result before failing.
+- A temporary production overlay that discards the caller's context passes the
+  original snapshot tests and fails the repaired cancellation assertion. Normal
+  race tests, static checks, built-CLI synthetic smoke, and CI validate the change.
