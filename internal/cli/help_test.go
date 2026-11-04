@@ -13,6 +13,7 @@ func TestHelpIsCligDevShaped(t *testing.T) {
 		args []string
 		want string
 	}{
+		{"no command", nil, "imsgcrawl reads local iMessage"},
 		{"top help long", []string{"--help"}, "imsgcrawl help COMMAND"},
 		{"top help short", []string{"-h"}, "Global flags:"},
 		{"help command", []string{"help"}, "imsgcrawl help COMMAND"},
@@ -54,5 +55,11 @@ func TestHelpIgnoresOtherCommandArguments(t *testing.T) {
 		if stdout.Len() == 0 {
 			t.Fatalf("Run(%v) printed no help", args)
 		}
+	}
+}
+
+func TestVersion(t *testing.T) {
+	if got := runOK(t, "--version"); strings.TrimSpace(got) != version {
+		t.Fatalf("version = %q, want %q", got, version)
 	}
 }
