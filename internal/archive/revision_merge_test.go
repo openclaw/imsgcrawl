@@ -2,7 +2,6 @@ package archive
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,10 +10,7 @@ import (
 
 func TestMergePreservesUnavailableRevisionMetadata(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	modern := fixtureArchiveData()
@@ -70,10 +66,7 @@ func TestMergePreservesUnavailableRevisionMetadata(t *testing.T) {
 
 func TestMergeClearsTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	current := fixtureArchiveData()
@@ -87,6 +80,7 @@ func TestMergeClearsTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
 	incoming.Messages = incoming.Messages[:1]
 	incoming.ChatMessages = incoming.ChatMessages[:1]
 	incoming.Messages[0].Text = "withdrawn fallback"
+	var err error
 	incoming.Messages[0].RevisionData, err = plist.Marshal(map[string]any{
 		"otr": map[string]any{"0": map[string]any{"lo": int64(0), "le": int64(18)}},
 		"ec":  map[string]any{"0": []any{map[string]any{"d": int64(123), "t": []byte("invalid")}}},
@@ -118,10 +112,7 @@ func TestMergeClearsTextWhenRevisionBodyCannotBeDecoded(t *testing.T) {
 
 func TestMergeClearsTextWhenPartialUnsendCannotBeReconstructed(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	current := fixtureArchiveData()
@@ -135,6 +126,7 @@ func TestMergeClearsTextWhenPartialUnsendCannotBeReconstructed(t *testing.T) {
 	incoming.Messages = incoming.Messages[:1]
 	incoming.ChatMessages = incoming.ChatMessages[:1]
 	incoming.Messages[0].Text = "keep withdrawn"
+	var err error
 	incoming.Messages[0].RevisionData, err = plist.Marshal(map[string]any{
 		"otr": map[string]any{
 			"0": map[string]any{"lo": int64(0), "le": int64(4)},
@@ -167,10 +159,7 @@ func TestMergeClearsTextWhenPartialUnsendCannotBeReconstructed(t *testing.T) {
 
 func TestMergeDoesNotReapplyAvailableRevisionData(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	incoming := fixtureArchiveData()
@@ -178,6 +167,7 @@ func TestMergeDoesNotReapplyAvailableRevisionData(t *testing.T) {
 	incoming.ChatMessages = incoming.ChatMessages[:1]
 	incoming.Messages[0].Text = "xtail"
 	incoming.Messages[0].DateEditedAvailable = false
+	var err error
 	incoming.Messages[0].RevisionData, err = plist.Marshal(map[string]any{
 		"otr": map[string]any{
 			"0": map[string]any{"lo": int64(0), "le": int64(1)},
