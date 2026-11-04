@@ -11,72 +11,47 @@ import (
 	"slices"
 	"strings"
 	"testing"
-)
 
-func TestRunEndToEnd(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "chat.db")
-	createMessagesFixture(t, dbPath)
-	ctx := context.Background()
-	for _, tc := range []struct {
-		name string
-		args []string
-		want string
-	}{
-		{"help", nil, "imsgcrawl reads local iMessage"},
-		{"version", []string{"--version"}, version},
-		{"metadata global json", []string{"--json", "metadata"}, `"id": "imsgcrawl"`},
-		{"metadata trailing json", []string{"metadata", "--json"}, `"contact-export"`},
-		{"status", []string{"--db", dbPath, "--json", "status"}, `"messages": 4`},
-		{"contacts export", []string{"--db", dbPath, "--json", "contacts", "export"}, `"display_name": "+15550103"`},
-		{"contacts export trailing json", []string{"--db", dbPath, "contacts", "export", "--json"}, `"phone_numbers"`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			var stdout, stderr bytes.Buffer
-			if err := Run(ctx, tc.args, &stdout, &stderr); err != nil {
-				t.Fatalf("Run() error = %v stderr=%s", err, stderr.String())
-			}
-			if !strings.Contains(stdout.String(), tc.want) {
-				t.Fatalf("stdout missing %q:\n%s", tc.want, stdout.String())
-			}
-		})
-	}
-}
+	"github.com/openclaw/crawlkit/control"
+)
 
 func TestContactsExportShapeAndDedupe(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "chat.db")
 	createMessagesFixture(t, dbPath)
-	var stdout, stderr bytes.Buffer
-	if err := Run(context.Background(), []string{"--db", dbPath, "--json", "contacts", "export"}, &stdout, &stderr); err != nil {
-		t.Fatalf("contacts export: %v stderr=%s", err, stderr.String())
-	}
-	assertContactExportKeys(t, stdout.Bytes())
-	var payload struct {
-		Contacts []struct {
-			DisplayName  string   `json:"display_name"`
-			PhoneNumbers []string `json:"phone_numbers"`
-			Service      string   `json:"service"`
-			Messages     int64    `json:"messages"`
-		} `json:"contacts"`
-	}
-	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
-		t.Fatalf("json = %s err=%v", stdout.String(), err)
-	}
-	got := map[string]string{}
-	for _, contact := range payload.Contacts {
-		if contact.Service != "" || contact.Messages != 0 {
-			t.Fatalf("leaked source fields = %#v", contact)
-		}
-		if len(contact.PhoneNumbers) != 1 {
-			t.Fatalf("phone_numbers = %#v", contact.PhoneNumbers)
-		}
-		got[contact.PhoneNumbers[0]] = contact.DisplayName
-	}
-	want := map[string]string{
-		"0015550100": "Most Recent Name",
-		"+15550103":  "+15550103",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("contacts = %#v, want %#v", got, want)
+	for _, args := range [][]string{
+		{"--db", dbPath, "--json", "contacts", "export"},
+		{"--db", dbPath, "contacts", "export", "--json"},
+	} {
+		t.Run(strings.Join(args[2:], " "), func(t *testing.T) {
+			output := runOK(t, args...)
+			assertContactExportKeys(t, []byte(output))
+			var payload struct {
+				Contacts []struct {
+					DisplayName  string   `json:"display_name"`
+					PhoneNumbers []string `json:"phone_numbers"`
+				} `json:"contacts"`
+			}
+			if err := json.Unmarshal([]byte(output), &payload); err != nil {
+				t.Fatalf("json = %s err=%v", output, err)
+			}
+			got := map[string]string{}
+			for _, contact := range payload.Contacts {
+				if len(contact.PhoneNumbers) != 1 {
+					t.Fatalf("phone_numbers = %#v", contact.PhoneNumbers)
+				}
+				got[contact.PhoneNumbers[0]] = contact.DisplayName
+			}
+			want := map[string]string{
+				"0015550100": "Most Recent Name",
+				"+15550103":  "+15550103",
+			}
+			if len(payload.Contacts) != len(want) {
+				t.Fatalf("contact count = %d, want %d", len(payload.Contacts), len(want))
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("contacts = %#v, want %#v", got, want)
+			}
+		})
 	}
 }
 
@@ -309,7 +284,7 @@ func TestStatusArchiveStates(t *testing.T) {
 	if err := json.Unmarshal([]byte(missingOut), &missing); err != nil {
 		t.Fatalf("missing status json = %s err=%v", missingOut, err)
 	}
-	if missing.State != "ok" || !hasWarning(missing.Warnings, "archive has not been synced") {
+	if missing.State != "ok" || missing.Source == nil || missing.Source.Messages != 4 || !hasWarning(missing.Warnings, "archive has not been synced") {
 		t.Fatalf("missing archive status = %#v", missing)
 	}
 
@@ -328,34 +303,44 @@ func TestStatusArchiveStates(t *testing.T) {
 }
 
 func TestMetadataAdvertisesCrawlerCommands(t *testing.T) {
-	manifest := controlManifest()
-	command, ok := manifest.Commands["contact-export"]
-	if !ok {
-		t.Fatalf("commands = %#v", manifest.Commands)
-	}
-	if command.Mutates || !command.JSON {
-		t.Fatalf("contact-export command = %#v", command)
-	}
-	want := []string{"imsgcrawl", "--json", "contacts", "export"}
-	if !reflect.DeepEqual(command.Argv, want) {
-		t.Fatalf("argv = %#v, want %#v", command.Argv, want)
-	}
-	for _, name := range []string{"sync", "chats", "messages", "search"} {
-		command, ok := manifest.Commands[name]
-		if !ok {
-			t.Fatalf("missing command %q in %#v", name, manifest.Commands)
-		}
-		if !command.JSON {
-			t.Fatalf("%s command is not JSON = %#v", name, command)
-		}
-	}
-	if !manifest.Commands["sync"].Mutates {
-		t.Fatalf("sync should be marked mutating = %#v", manifest.Commands["sync"])
-	}
-	for _, want := range []string{"message-archive", "message-text-search"} {
-		if !slices.Contains(manifest.Privacy.LocalOnlyScopes, want) {
-			t.Fatalf("local_only_scopes = %#v, missing %q", manifest.Privacy.LocalOnlyScopes, want)
-		}
+	for _, args := range [][]string{{"--json", "metadata"}, {"metadata", "--json"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var manifest control.Manifest
+			if err := json.Unmarshal([]byte(runOK(t, args...)), &manifest); err != nil {
+				t.Fatal(err)
+			}
+			if manifest.ID != "imsgcrawl" {
+				t.Fatalf("metadata id = %q", manifest.ID)
+			}
+			command, ok := manifest.Commands["contact-export"]
+			if !ok {
+				t.Fatalf("commands = %#v", manifest.Commands)
+			}
+			if command.Mutates || !command.JSON {
+				t.Fatalf("contact-export command = %#v", command)
+			}
+			want := []string{"imsgcrawl", "--json", "contacts", "export"}
+			if !reflect.DeepEqual(command.Argv, want) {
+				t.Fatalf("argv = %#v, want %#v", command.Argv, want)
+			}
+			for _, name := range []string{"sync", "chats", "messages", "search"} {
+				command, ok := manifest.Commands[name]
+				if !ok {
+					t.Fatalf("missing command %q in %#v", name, manifest.Commands)
+				}
+				if !command.JSON {
+					t.Fatalf("%s command is not JSON = %#v", name, command)
+				}
+			}
+			if !manifest.Commands["sync"].Mutates {
+				t.Fatalf("sync should be marked mutating = %#v", manifest.Commands["sync"])
+			}
+			for _, want := range []string{"message-archive", "message-text-search"} {
+				if !slices.Contains(manifest.Privacy.LocalOnlyScopes, want) {
+					t.Fatalf("local_only_scopes = %#v, missing %q", manifest.Privacy.LocalOnlyScopes, want)
+				}
+			}
+		})
 	}
 }
 
