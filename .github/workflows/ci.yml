@@ -37,6 +37,10 @@ jobs:
         with:
           go-version: "1.27.3"
           cache: true
+          # Retain race build outputs independently of vulnerability scans.
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/ci.yml
 
       - name: Verify preferred toolchain and source floor
         run: |

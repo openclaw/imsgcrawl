@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Give native race-test jobs separate Go caches so faster vulnerability scans cannot reserve their immutable cache entries first.
+
 - Check the Go source floor in the existing native test matrix instead of repeating macOS setup, module checks, builds, and tests in a separate job.
 
 - Batch main CodeQL analysis weekly while preserving PR and manual scans.
