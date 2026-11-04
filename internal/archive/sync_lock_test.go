@@ -92,25 +92,37 @@ func TestSyncWaitsForLockBeforeArchiveInspection(t *testing.T) {
 }
 
 func TestSyncSerializesExtractionThroughImport(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
 	path := filepath.Join(t.TempDir(), "archive.db")
 	source := filepath.Join(t.TempDir(), "source.db")
 	firstStarted, firstRelease := make(chan struct{}), make(chan struct{})
 	firstDone := make(chan error, 1)
 	go func() {
-		_, err := syncArchive(context.Background(), path, source, false,
-			func(context.Context, string) (messages.ArchiveData, error) {
+		_, err := syncArchive(ctx, path, source, false,
+			func(ctx context.Context, _ string) (messages.ArchiveData, error) {
 				close(firstStarted)
-				<-firstRelease
+				select {
+				case <-firstRelease:
+				case <-ctx.Done():
+					return messages.ArchiveData{}, ctx.Err()
+				}
 				data := fixtureArchiveData()
 				data.SourcePath = source
 				return data, nil
 			})
 		firstDone <- err
 	}()
-	<-firstStarted
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	_, err := syncArchive(ctx, path, source, false, func(context.Context, string) (messages.ArchiveData, error) {
+	select {
+	case <-firstStarted:
+	case err := <-firstDone:
+		t.Fatalf("first sync did not reach extraction: %v", err)
+	case <-ctx.Done():
+		t.Fatalf("waiting for first extraction: %v", ctx.Err())
+	}
+	wait, stop := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer stop()
+	_, err := syncArchive(wait, path, source, false, func(context.Context, string) (messages.ArchiveData, error) {
 		t.Error("second extraction ran before first import")
 		return messages.ArchiveData{}, nil
 	})
@@ -118,16 +130,21 @@ func TestSyncSerializesExtractionThroughImport(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("second sync = %v", err)
 	}
-	if err := <-firstDone; err != nil {
-		t.Fatal(err)
+	select {
+	case err := <-firstDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-ctx.Done():
+		t.Fatalf("waiting for first import: %v", ctx.Err())
 	}
-	_, err = syncArchive(context.Background(), path, source, false, func(context.Context, string) (messages.ArchiveData, error) {
+	_, err = syncArchive(ctx, path, source, false, func(context.Context, string) (messages.ArchiveData, error) {
 		return messages.ArchiveData{}, errors.New("synthetic extraction failure")
 	})
 	if err == nil {
 		t.Fatal("extraction error lost")
 	}
-	unlock, err := lockSync(context.Background(), path)
+	unlock, err := lockSync(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,6 +152,8 @@ func TestSyncSerializesExtractionThroughImport(t *testing.T) {
 }
 
 func TestSyncSerializesDanglingArchiveSymlink(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
 	root := t.TempDir()
 	target, alias := filepath.Join(root, "archive.db"), filepath.Join(root, "alias.db")
 	if err := os.Symlink(filepath.Base(target), alias); err != nil {
@@ -144,10 +163,14 @@ func TestSyncSerializesDanglingArchiveSymlink(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := syncArchive(context.Background(), alias, source, false,
-			func(context.Context, string) (messages.ArchiveData, error) {
+		_, err := syncArchive(ctx, alias, source, false,
+			func(ctx context.Context, _ string) (messages.ArchiveData, error) {
 				close(started)
-				<-release
+				select {
+				case <-release:
+				case <-ctx.Done():
+					return messages.ArchiveData{}, ctx.Err()
+				}
 				return fixtureArchiveData(), nil
 			})
 		done <- err
@@ -156,17 +179,23 @@ func TestSyncSerializesDanglingArchiveSymlink(t *testing.T) {
 	case <-started:
 	case err := <-done:
 		t.Fatalf("first sync did not reach extraction: %v", err)
+	case <-ctx.Done():
+		t.Fatalf("waiting for first extraction: %v", ctx.Err())
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	_, err := syncArchive(ctx, target, source, false, func(context.Context, string) (messages.ArchiveData, error) {
+	wait, stop := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer stop()
+	_, err := syncArchive(wait, target, source, false, func(context.Context, string) (messages.ArchiveData, error) {
 		t.Error("target-name extraction bypassed dangling-symlink lock")
 		return messages.ArchiveData{}, errors.New("unexpected extraction")
 	})
 	close(release)
-	firstErr := <-done
-	if !errors.Is(err, context.DeadlineExceeded) || firstErr != nil {
-		t.Fatalf("second=%v first=%v", err, firstErr)
+	select {
+	case firstErr := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) || firstErr != nil {
+			t.Fatalf("second=%v first=%v", err, firstErr)
+		}
+	case <-ctx.Done():
+		t.Fatalf("waiting for first import: %v", ctx.Err())
 	}
 }
 
