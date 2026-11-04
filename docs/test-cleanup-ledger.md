@@ -14,3 +14,17 @@
 
 This is a bounded CLI-test cleanup, not a complete repository audit.
 No production behavior or release artifacts changed.
+
+## Sync-lock test waits
+
+- Retained the real file-lock contention, import serialization, extraction-error
+  release, and dangling-symlink coverage. These tests use temporary archives.
+- Bounded the first sync and its extraction/import channel waits in the two
+  serialization tests. An early sync failure now reports the returned error; a
+  stalled phase reports its name instead of hanging until the suite timeout.
+- Made the paused synthetic extractors observe cancellation, so a failed test
+  can release its own lock. The separate 100 ms competing-sync deadlines remain.
+
+Validation: race-enabled archive tests, full module tests and vet, built-CLI
+synthetic smoke, and CI. No production code, live Messages data, or release
+artifacts changed.
