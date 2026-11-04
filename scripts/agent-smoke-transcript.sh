@@ -155,7 +155,8 @@ run_step() {
   stdout_bytes=$(wc -c <"$stdout_path" | tr -d ' ')
   stderr_bytes=$(wc -c <"$stderr_path" | tr -d ' ')
 
-  {
+  local header
+  header=$(
     printf '\n================================================================================\n'
     printf '[%s] %s\n' "$id" "$name"
     printf '================================================================================\n'
@@ -167,24 +168,15 @@ run_step() {
     printf 'stderr_file: %s\n' "$stderr_path"
     printf 'stdout_bytes: %s\n' "$stdout_bytes"
     printf 'stderr_bytes: %s\n' "$stderr_bytes"
-  } >>"$review"
+  )
+  printf '%s\n' "$header" >>"$review"
 
   append_preview "STDOUT $id" "$stdout_path"
   append_preview "STDERR $id" "$stderr_path"
 
   if [[ "$inline_raw" -eq 1 ]]; then
     {
-      printf '\n================================================================================\n'
-      printf '[%s] %s\n' "$id" "$name"
-      printf '================================================================================\n'
-      printf 'command: '
-      quote_command "$@"
-      printf '\n'
-      printf 'exit_code: %s\n' "$code"
-      printf 'stdout_file: %s\n' "$stdout_path"
-      printf 'stderr_file: %s\n' "$stderr_path"
-      printf 'stdout_bytes: %s\n' "$stdout_bytes"
-      printf 'stderr_bytes: %s\n' "$stderr_bytes"
+      printf '%s\n' "$header"
       printf '\n----- STDOUT BEGIN %s -----\n' "$id"
       cat "$stdout_path"
       printf '\n----- STDOUT END %s -----\n' "$id"
