@@ -13,10 +13,7 @@ import (
 
 func TestImportMergeRestoreTombstonesAndRevisions(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	base := fixtureArchiveData()
@@ -126,10 +123,7 @@ func TestImportMergeRestoreTombstonesAndRevisions(t *testing.T) {
 
 func TestPartialUnsendRemainsActiveAndSummaryMetadataIsNotARevision(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	data := fixtureArchiveData()
@@ -239,10 +233,7 @@ insert into messages(source_rowid, guid, date, text) values(7, 'legacy-guid', 42
 
 func TestDeletedChatMessagesAreNotSearchable(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	if err := st.Import(ctx, fixtureArchiveData(), now, false); err != nil {
@@ -269,10 +260,7 @@ func TestDeletedChatMessagesAreNotSearchable(t *testing.T) {
 
 func TestOrphanMessagesRemainSearchable(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	data := fixtureArchiveData()
 	data.ChatMessages = data.ChatMessages[:1]
@@ -347,4 +335,13 @@ func assertActive(t *testing.T, db *sql.DB, table, key string, value any) {
 	if deletedAt.Valid {
 		t.Fatalf("%s.%s %v unexpectedly tombstoned at %q", table, key, value, deletedAt.String)
 	}
+}
+
+func openTestArchive(t *testing.T, ctx context.Context) *Store {
+	t.Helper()
+	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return st
 }

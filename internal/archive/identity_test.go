@@ -2,7 +2,6 @@ package archive
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,17 +24,14 @@ func TestMergeRejectsSourceIdentityRemapping(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-			if err != nil {
-				t.Fatal(err)
-			}
+			st := openTestArchive(t, ctx)
 			defer func() { _ = st.Close() }()
 			if err := st.Import(ctx, fixtureArchiveData(), now, false); err != nil {
 				t.Fatal(err)
 			}
 			incoming := fixtureArchiveData()
 			test.mutate(&incoming)
-			err = st.Import(ctx, incoming, now.Add(time.Minute), false)
+			err := st.Import(ctx, incoming, now.Add(time.Minute), false)
 			if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 				t.Fatalf("merge error = %v", err)
 			}
@@ -48,10 +44,7 @@ func TestMergeRejectsSourceIdentityRemapping(t *testing.T) {
 
 func TestRestoreAllowsSourceIdentityRemapping(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	if err := st.Import(ctx, fixtureArchiveData(), now, false); err != nil {
@@ -80,10 +73,7 @@ func TestRestoreAllowsSourceIdentityRemapping(t *testing.T) {
 
 func TestMergeAdoptsLegacyRelativeSourcePathOnce(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	data := fixtureArchiveData()
@@ -96,7 +86,7 @@ update sync_state set value='relative/chat.db' where key='source_path'`); err !=
 	}
 	unrelated := data
 	unrelated.SourcePath = "/other/database.db"
-	err = st.Import(ctx, unrelated, now.Add(30*time.Second), false)
+	err := st.Import(ctx, unrelated, now.Add(30*time.Second), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("unrelated source was adopted: %v", err)
 	}
@@ -113,10 +103,7 @@ update sync_state set value='relative/chat.db' where key='source_path'`); err !=
 
 func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	data := fixtureArchiveData()
@@ -126,7 +113,7 @@ func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
 	if _, err := st.store.DB().Exec(`insert into handles(source_rowid, handle, service) values(99, ?, ?)`, data.Handles[0].ID, data.Handles[0].Service); err != nil {
 		t.Fatal(err)
 	}
-	err = st.Import(ctx, data, now.Add(time.Minute), false)
+	err := st.Import(ctx, data, now.Add(time.Minute), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("duplicate handle merge error = %v", err)
 	}
@@ -134,10 +121,7 @@ func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
 
 func TestMergeRejectsDifferentSourceDatabase(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	if err := st.Import(ctx, fixtureArchiveData(), now, false); err != nil {
@@ -145,7 +129,7 @@ func TestMergeRejectsDifferentSourceDatabase(t *testing.T) {
 	}
 	incoming := fixtureArchiveData()
 	incoming.SourcePath = "/private/other/chat.db"
-	err = st.Import(ctx, incoming, now.Add(time.Minute), false)
+	err := st.Import(ctx, incoming, now.Add(time.Minute), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("source lineage error = %v", err)
 	}
@@ -163,10 +147,7 @@ func TestMergeRejectsDifferentSourceDatabase(t *testing.T) {
 
 func TestRestoreRejectsDuplicateIncomingGUIDsWithoutChangingArchive(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	if err := st.Import(ctx, fixtureArchiveData(), now, false); err != nil {
@@ -174,7 +155,7 @@ func TestRestoreRejectsDuplicateIncomingGUIDsWithoutChangingArchive(t *testing.T
 	}
 	incoming := fixtureArchiveData()
 	incoming.Messages[1].GUID = incoming.Messages[0].GUID
-	err = st.Import(ctx, incoming, now.Add(time.Minute), true)
+	err := st.Import(ctx, incoming, now.Add(time.Minute), true)
 	if err == nil || !strings.Contains(err.Error(), "appears at rowids") {
 		t.Fatalf("duplicate restore error = %v", err)
 	}
@@ -195,10 +176,7 @@ func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-			if err != nil {
-				t.Fatal(err)
-			}
+			st := openTestArchive(t, ctx)
 			defer func() { _ = st.Close() }()
 			data := fixtureArchiveData()
 			if err := st.Import(ctx, data, now, false); err != nil {
@@ -207,7 +185,7 @@ func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
 			if _, err := st.store.DB().Exec(test.insert); err != nil {
 				t.Fatal(err)
 			}
-			err = st.Import(ctx, data, now.Add(time.Minute), false)
+			err := st.Import(ctx, data, now.Add(time.Minute), false)
 			if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 				t.Fatalf("duplicate %s merge error = %v", test.name, err)
 			}
@@ -217,10 +195,7 @@ func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
 
 func TestSyntheticTombstoneCollisionAllocatesAnotherRow(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	collidingRowID := syntheticRowID("message", "target-guid", 0)
 	if _, err := st.store.DB().Exec(`insert into messages(source_rowid, guid, deleted_at, deletion_reason)
@@ -239,10 +214,7 @@ values(?, 'other-guid', '2026-07-18T12:00:00Z', 'test')`, collidingRowID); err !
 
 func TestBlankGUIDEventsUseRowIDFallback(t *testing.T) {
 	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	st := openTestArchive(t, ctx)
 	defer func() { _ = st.Close() }()
 	data := messages.ArchiveData{Messages: []messages.Message{
 		{SourceRowID: 1, GUID: "", Text: "same", FullyUnsent: true},
