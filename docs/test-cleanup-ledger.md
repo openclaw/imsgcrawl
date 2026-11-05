@@ -39,3 +39,13 @@ artifacts changed.
 - A temporary production overlay that discards the caller's context passes the
   original snapshot tests and fails the repaired cancellation assertion. Normal
   race tests, static checks, built-CLI synthetic smoke, and CI validate the change.
+
+## Smoke fixture database cleanup
+
+- Close all five synthetic source connections after their transaction commits.
+  Preserve every fixture value, CLI call and assertion.
+- The original built-CLI smoke passes while all five observed Python connections
+  remain usable. The same smoke now passes with all five connections closed.
+- Validate before/after against one temporary CLI binary, transcript privacy tests,
+  race-enabled module tests, static checks, independent review and platform CI.
+  No live Messages database or release artifact is used.
