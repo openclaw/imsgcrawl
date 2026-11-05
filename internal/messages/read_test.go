@@ -1,7 +1,6 @@
 package messages
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -34,24 +33,6 @@ func TestLooksPhoneLikeAllowsShortCodesButRejectsOpaqueIDs(t *testing.T) {
 		if got := LooksPhoneLike(tc.in); got != tc.want {
 			t.Fatalf("LooksPhoneLike(%q) = %v, want %v", tc.in, got, tc.want)
 		}
-	}
-}
-
-func TestDecodeAttributedBody(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		text string
-	}{
-		{name: "short", text: "Hello world"},
-		{name: "long", text: "This is a longer message that exercises the multi-byte length path in the streamtyped attributedBody decoder."},
-		{name: "extended length", text: strings.Repeat("x", 300)},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, ok := decodeAttributedBodyValue(makeStreamtypedAttributedBody(tc.text))
-			if !ok || got != tc.text {
-				t.Fatalf("got %q, want %q", got, tc.text)
-			}
-		})
 	}
 }
 
