@@ -49,3 +49,16 @@ artifacts changed.
 - Validate before/after against one temporary CLI binary, transcript privacy tests,
   race-enabled module tests, static checks, independent review and platform CI.
   No live Messages database or release artifact is used.
+
+## Attributed-body round-trip coverage
+
+- Remove the separate three-case `TestDecodeAttributedBody` table. Its short,
+  ordinary and 300-byte bodies repeat the round-trip assertion already exercised
+  by `FuzzDecodeAttributedBodyRoundTrip` during ordinary `go test` runs.
+- Keep every fuzz seed, including leading NULs, Unicode and the 127/128,
+  255/256 and 65,535/65,536-byte length boundaries. Preserve the independent
+  Foundation-generated fixture, malformed input and overflow checks.
+- Compare healthy runs and decoder-fault overlays before/after removal; require
+  the retained seed corpus to reject the same short and extended-length faults.
+  Validate full module race tests, static checks, built-CLI synthetic smoke,
+  independent review and platform CI. No production behavior or release changes.
