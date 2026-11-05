@@ -1,5 +1,6 @@
 """Exercise the built CLI using only an owned synthetic Messages database."""
 
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -46,7 +47,7 @@ insert into chat_message_join values (1,1), (1,2);
 
 def smoke(binary, directory):
     source, archive = directory / "source.db", directory / "archive.db"
-    with sqlite3.connect(source) as db:
+    with closing(sqlite3.connect(source)) as db, db:
         db.executescript(SCHEMA)
         db.execute("update message set date=500000000 where rowid=1")
     before = hashlib.sha256(source.read_bytes()).digest()
@@ -90,7 +91,7 @@ def smoke(binary, directory):
 
     name = "Synthetic\x1b[2J Friend"
     body = "orchard \x1b]52;c;c3ludGhldGlj\x07 \u009b31m café 😀\b\x7f"
-    with sqlite3.connect(source) as db:
+    with closing(sqlite3.connect(source)) as db, db:
         db.execute("update chat set display_name = ?", (name,))
         db.execute("update message set text = ? where rowid = 1", (body,))
     run("sync")
@@ -106,17 +107,17 @@ def smoke(binary, directory):
     def typed_body(payload):
         return b"\x04\x0bstreamtyped\x84\x01+" + bytes([len(payload)]) + payload + b"\x86"
 
-    with sqlite3.connect(source) as db:
+    with closing(sqlite3.connect(source)) as db, db:
         db.execute("update message set text = null, attributedBody = ? where rowid = 1",
                    (typed_body(b"\x00hello"),))
     run("sync")
     assert run("messages", "--chat", "1", "--asc")["items"][0]["text"] == "\x00hello"
-    with sqlite3.connect(source) as db:
+    with closing(sqlite3.connect(source)) as db, db:
         db.execute("update message set attributedBody = ? where rowid = 1",
                    (typed_body(b"prefix\xfftail"),))
     run("sync")
     assert run("messages", "--chat", "1", "--asc")["items"][0]["text"] == "\x00hello"
-    with sqlite3.connect(source) as db:
+    with closing(sqlite3.connect(source)) as db, db:
         db.execute("update message set attributedBody = ?, date_edited = ? where rowid = 1",
                    (typed_body(b"prefix\xfftail"), 800000000000000001))
     before = hashlib.sha256(source.read_bytes()).digest()
