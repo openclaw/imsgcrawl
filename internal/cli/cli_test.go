@@ -92,45 +92,46 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	allChatsOut := runOK(t, "--archive", archivePath, "--json", "chats")
-	var allChats chatListJSON
-	if err := json.Unmarshal([]byte(allChatsOut), &allChats); err != nil {
-		t.Fatalf("all chats json = %s err=%v", allChatsOut, err)
+	wantChats := []chatJSONItem{
+		{ChatID: "4", GUID: "chat-four", Title: "Cabinet Group", Kind: "group",
+			ChatIdentifier: "group-chat", RoomName: "Cabinet Group", Service: "SMS",
+			ParticipantCount: 3, ParticipantHandles: []string{"+15550103", "opaque-handle", "opaque123"},
+			MessageCount: 1, LatestMessageDate: 300},
+		{ChatID: "3", GUID: "chat-three", Title: "+15550103", Kind: "direct",
+			ChatIdentifier: "+15550103", Service: "SMS", ParticipantCount: 1,
+			ParticipantHandles: []string{"+15550103"}, MessageCount: 1, LatestMessageDate: 300},
+		{ChatID: "2", GUID: "chat-two", Title: "Most Recent Name", Kind: "direct",
+			ChatIdentifier: "0015550100", Service: "SMS", ParticipantCount: 1,
+			ParticipantHandles: []string{"0015550100"}, MessageCount: 2, LatestMessageDate: 250},
+		{ChatID: "1", GUID: "chat-one", Title: "Older Name", Kind: "direct",
+			ChatIdentifier: "+15550100", Service: "iMessage", ParticipantCount: 1,
+			ParticipantHandles: []string{"+15550100"}, MessageCount: 1, LatestMessageDate: 100},
 	}
-	if allChats.Returned != 4 || allChats.Total != 4 || allChats.Limit != defaultChatLimit || !allChats.Complete || len(allChats.Items) != 4 {
-		t.Fatalf("bare chats should return all chats, got %#v", allChats)
-	}
-
-	limitedChatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "2")
-	var limitedChats chatListJSON
-	if err := json.Unmarshal([]byte(limitedChatsOut), &limitedChats); err != nil {
-		t.Fatalf("limited chats json = %s err=%v", limitedChatsOut, err)
-	}
-	if limitedChats.Returned != 2 || limitedChats.Total != 4 || limitedChats.Limit != 2 || limitedChats.Complete || len(limitedChats.Items) != 2 {
-		t.Fatalf("limited chats = %#v", limitedChats)
-	}
-
-	chatsOut := runOK(t, "--archive", archivePath, "--json", "chats", "--limit", "4")
-	var chats chatListJSON
-	if err := json.Unmarshal([]byte(chatsOut), &chats); err != nil {
-		t.Fatalf("chats json = %s err=%v", chatsOut, err)
-	}
-	if len(chats.Items) != 4 {
-		t.Fatalf("chats = %#v", chats)
-	}
-	if !chatHasMessage(t, chats.Items, "3", "+15550103", 1) || !chatHasMessage(t, chats.Items, "4", "Cabinet Group", 1) {
-		t.Fatalf("chats did not preserve chat_message_join rows: %#v", chats)
-	}
-	for _, chat := range chats.Items {
-		if chat.ChatID == "4" && (chat.Kind != "group" || chat.ParticipantCount != 3) {
-			t.Fatalf("group chat context = %#v", chat)
-		}
-		if chat.ChatID == "4" && !slices.Contains(chat.ParticipantHandles, "+15550103") {
-			t.Fatalf("group participant handles = %#v", chat)
-		}
-		if chat.ChatID == "2" && (chat.Kind != "direct" || chat.ParticipantCount != 1) {
-			t.Fatalf("direct chat context = %#v", chat)
-		}
+	for _, tc := range []struct {
+		name            string
+		args            []string
+		limit, returned int
+	}{
+		{"default chats", nil, defaultChatLimit, 4},
+		{"limited chats", []string{"--limit", "2"}, 2, 2},
+		{"explicit full chats", []string{"--limit", "4"}, 4, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{"--archive", archivePath, "--json", "chats"}, tc.args...)
+			output := runOK(t, args...)
+			var got chatListJSON
+			if err := json.Unmarshal([]byte(output), &got); err != nil {
+				t.Fatalf("chats json = %s err=%v", output, err)
+			}
+			want := chatListJSON{
+				SchemaVersion: control.SchemaVersion, AppID: "imsgcrawl", Command: "chats",
+				Returned: tc.returned, Total: int64(len(wantChats)), Limit: tc.limit,
+				Complete: tc.returned == len(wantChats), Items: wantChats[:tc.returned],
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("chats = %#v, want %#v", got, want)
+			}
+		})
 	}
 
 	messagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--asc")

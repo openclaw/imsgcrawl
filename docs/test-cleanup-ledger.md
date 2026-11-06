@@ -147,3 +147,17 @@ artifacts changed.
 - Restore temporary production faults byte-for-byte; require full module checks,
   built-CLI synthetic smoke, independent review and macOS/Linux CI.
   Synthetic temporary databases only; no production behavior changes or releases.
+
+## Complete chat-list records
+
+- Consolidate the existing default, two-row and explicit four-row JSON chat-list
+  commands into one table. Preserve all three inputs and the synced fixture.
+- Compare the full envelopes and all eleven chat fields, including ordered
+  participant handles and the newest-first rowid tie-break. Remove the now-unused
+  ten-line membership helper; the three test files are five lines shorter.
+- Ten before/after full-CLI race suites retain message-count failure detection.
+  The repaired cases additionally reject fabricated metadata, swapped newest
+  chats and missing extra participant handles that the original suite accepted.
+- Restore temporary production faults byte-for-byte; require full module checks,
+  built-CLI synthetic smoke, independent review and macOS/Linux CI.
+  Synthetic temporary data only; no production behavior changes or releases.

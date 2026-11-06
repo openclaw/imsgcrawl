@@ -19,16 +19,6 @@ func runOK(t *testing.T, args ...string) string {
 	return stdout.String()
 }
 
-func chatHasMessage(t *testing.T, chats []chatJSONItem, chatID, title string, messages int64) bool {
-	t.Helper()
-	for _, chat := range chats {
-		if chat.ChatID == chatID && chat.Title == title && chat.MessageCount == messages {
-			return true
-		}
-	}
-	return false
-}
-
 func hasWarning(warnings []string, want string) bool {
 	for _, warning := range warnings {
 		if strings.Contains(warning, want) {
