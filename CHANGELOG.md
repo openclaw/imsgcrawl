@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.3 - 2026-11-06
+
+**Highlights:** Preserve literal SQLite paths when opening archives and checking freshness.
+
+- Update CrawlKit to v0.17.4 to preserve literal SQLite paths when opening archives, taking snapshots, and checking freshness; reject ambiguous Windows paths.
 
 - Give native race-test jobs separate Go caches so faster vulnerability scans cannot reserve their immutable cache entries first.
 
