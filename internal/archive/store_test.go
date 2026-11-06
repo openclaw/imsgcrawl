@@ -172,65 +172,6 @@ func TestPartialUnsendRemainsActiveAndSummaryMetadataIsNotARevision(t *testing.T
 	}
 }
 
-func TestOpenMigratesVersionOneArchive(t *testing.T) {
-	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "v1.db")
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = db.Exec(`
-create table messages (
-  source_rowid integer primary key, guid text not null, handle_rowid integer not null default 0,
-  date integer not null default 0, service text, is_from_me integer not null default 0,
-  text text, has_attachments integer not null default 0
-);
-create table schema_migrations(version integer not null);
-insert into schema_migrations(version) values(1);
-insert into messages(source_rowid, guid, date, text) values(7, 'legacy-guid', 42, 'legacy text');`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
-	st, err := OpenExisting(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = st.Close() }()
-	version, err := st.store.SchemaVersion(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if version != schemaVersion {
-		t.Fatalf("schema version = %d", version)
-	}
-	for _, column := range []string{"date_edited", "date_retracted", "revision_data", "deleted_at", "deletion_reason"} {
-		var exists int
-		if err := st.store.DB().QueryRowContext(ctx, `select count(*) from pragma_table_info('messages') where name = ?`, column).Scan(&exists); err != nil {
-			t.Fatal(err)
-		}
-		if exists != 1 {
-			t.Fatalf("missing migrated messages.%s", column)
-		}
-	}
-	for _, table := range []string{"handles", "chats", "chat_participants", "chat_messages", "message_events"} {
-		for _, column := range []string{"deleted_at", "deletion_reason"} {
-			var exists int
-			if err := st.store.DB().QueryRowContext(ctx, `select count(*) from pragma_table_info(?) where name = ?`, table, column).Scan(&exists); err != nil {
-				t.Fatal(err)
-			}
-			if exists != 1 {
-				t.Fatalf("missing migrated %s.%s", table, column)
-			}
-		}
-	}
-	if got := scalar(t, st.store.DB(), `select count(*) from message_events where message_guid = 'legacy-guid'`); got != 1 {
-		t.Fatalf("seeded legacy events = %d", got)
-	}
-}
-
 func TestDeletedChatMessagesAreNotSearchable(t *testing.T) {
 	ctx := context.Background()
 	st := openTestArchive(t, ctx)

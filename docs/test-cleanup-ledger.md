@@ -116,3 +116,18 @@ artifacts changed.
   child-guard probe passes the original suite, alongside the sole-caller proof.
 - Require full module/static checks, built-CLI synthetic smoke, independent review
   and platform CI. Temporary synthetic data only; no live Messages data or releases.
+
+## Legacy migration contents
+
+- Move the version-one migration test out of the broad store test file. Keep
+  every schema-column check and the original NULL/default legacy row; add one
+  populated row to exercise handle, service, direction and attachment metadata.
+- Replace the single GUID-filtered event count with complete message/event
+  counts and per-row content, revision/default and deletion-state assertions.
+  Decode event JSON before comparison so key ordering is not part of the test.
+- Ten before/after full-archive race suites: healthy suites pass, wrong event
+  identity remains detected, and the repaired test additionally rejects corrupted
+  event text, discarded event metadata and overwritten stored message text.
+- All temporary migration faults are restored byte-for-byte. Require full module
+  checks, built-CLI synthetic smoke, independent review and macOS/Linux CI.
+  Synthetic temporary databases only; no production behavior changes or releases.
