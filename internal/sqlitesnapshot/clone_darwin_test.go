@@ -57,7 +57,7 @@ func TestCloneIsPrivateAndIndependent(t *testing.T) {
 	}
 }
 
-func TestCloneRejectsReplacedSourceAndExistingDestination(t *testing.T) {
+func TestCloneRejectsReplacedSource(t *testing.T) {
 	root := t.TempDir()
 	source, dest := filepath.Join(root, "source"), filepath.Join(root, "clone")
 	if err := os.WriteFile(source, []byte("original"), 0o600); err != nil {
@@ -76,20 +76,7 @@ func TestCloneRejectsReplacedSourceAndExistingDestination(t *testing.T) {
 	if _, err := cloneFile(source, dest, info); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("replaced source accepted: %v", err)
 	}
-	if err := os.WriteFile(dest, []byte("keep existing"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	info, err = os.Stat(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := copyFile(context.Background(), source, dest, info); err == nil {
-		t.Fatal("existing destination accepted")
-	}
-	got, err := os.ReadFile(dest)
-	if err != nil || string(got) != "keep existing" {
-		t.Fatalf("existing destination changed: %v", err)
-	}
+
 }
 
 func TestFlaggedSourceUsesPrivateByteCopy(t *testing.T) {

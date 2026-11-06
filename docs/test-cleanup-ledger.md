@@ -161,3 +161,17 @@ artifacts changed.
 - Restore temporary production faults byte-for-byte; require full module checks,
   built-CLI synthetic smoke, independent review and macOS/Linux CI.
   Synthetic temporary data only; no production behavior changes or releases.
+
+## Portable copy refusals
+
+- Move the existing-destination case out of the Darwin-only clone test into
+  the portable copy-refusal table. Keep native replaced-source clone coverage.
+- Preserve cancellation and existing-file inputs; require their specific error
+  causes, unchanged source/destination contents and metadata, and no output after
+  cancellation. Compare captured metadata without assuming POSIX permissions.
+- Ten before/after native snapshot race comparison suites retain overwrite and
+  cancellation detection and now reject unrelated collision errors and source
+  damage. All temporary production faults are restored byte-for-byte.
+- Linux test discovery now includes the refusal table. Require native macOS/Linux
+  CI, full module checks, built-CLI smoke and independent review.
+  Temporary synthetic files only; no production changes or releases.
