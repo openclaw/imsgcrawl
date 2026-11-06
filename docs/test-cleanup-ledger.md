@@ -175,3 +175,14 @@ artifacts changed.
 - Linux test discovery now includes the refusal table. Require native macOS/Linux
   CI, full module checks, built-CLI smoke and independent review.
   Temporary synthetic files only; no production changes or releases.
+
+## Complete package-load rejection fixtures
+
+- Replace the malformed error-only package fixture with a real loaded root
+  carrying its direct error; cover dependency errors and incomplete graphs too.
+- Keep loaded-versus-selected dependency checks, empty roots and version mismatch.
+- Eight before/after evaluator-suite runs: healthy inputs pass, direct-error
+  detection remains, and two previously missed guard regressions now fail.
+  Faults exist only in memory; production bytes remain unchanged.
+- Require evaluator/privacy tests, independent review and macOS/Linux CI.
+  Synthetic package metadata only; no product changes or releases.
