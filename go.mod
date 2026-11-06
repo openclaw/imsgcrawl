@@ -6,10 +6,10 @@ toolchain go1.27.3
 
 require (
 	github.com/mattn/go-runewidth v0.0.31
-	github.com/openclaw/crawlkit v0.17.3
+	github.com/openclaw/crawlkit v0.17.4
 	golang.org/x/sys v0.49.0
 	howett.net/plist v1.0.1
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
