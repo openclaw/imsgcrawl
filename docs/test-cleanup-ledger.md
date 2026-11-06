@@ -62,3 +62,16 @@ artifacts changed.
   the retained seed corpus to reject the same short and extended-length faults.
   Validate full module race tests, static checks, built-CLI synthetic smoke,
   independent review and platform CI. No production behavior or release changes.
+
+## Current-message extraction fixtures
+
+- Fold three current-text extraction tests into one table, removing nineteen
+  test lines. Preserve each input, schema, isolated SQLite database, current-body
+  assertion and malformed-summary fallback check.
+- Keep revision metadata, legacy-column availability and malformed-body extraction
+  tests separate. They exercise different source shapes and failure paths.
+- Eight before/after race suites retain detection of a lost current-body flag,
+  exposed known-edit fallback and corrupted decoded text. Healthy suites pass;
+  production source is restored byte-for-byte.
+- Require full module race tests, static checks, built-CLI synthetic smoke,
+  independent review and platform CI. No live Messages data or releases.
