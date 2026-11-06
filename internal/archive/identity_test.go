@@ -2,6 +2,7 @@ package archive
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -31,13 +32,12 @@ func TestMergeRejectsSourceIdentityRemapping(t *testing.T) {
 			}
 			incoming := fixtureArchiveData()
 			test.mutate(&incoming)
+			before := archiveContents(t, st)
 			err := st.Import(ctx, incoming, now.Add(time.Minute), false)
 			if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 				t.Fatalf("merge error = %v", err)
 			}
-			if got := scalar(t, st.store.DB(), `select count(*) from messages where guid = 'message-one'`); got != 1 {
-				t.Fatalf("failed merge changed archive: %d", got)
-			}
+			assertArchiveUnchanged(t, st, before)
 		})
 	}
 }
@@ -86,37 +86,23 @@ update sync_state set value='relative/chat.db' where key='source_path'`); err !=
 	}
 	unrelated := data
 	unrelated.SourcePath = "/other/database.db"
+	before := archiveContents(t, st)
 	err := st.Import(ctx, unrelated, now.Add(30*time.Second), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("unrelated source was adopted: %v", err)
 	}
+	assertArchiveUnchanged(t, st, before)
 	data.SourcePath = "/new-working-directory/relative/chat.db"
 	if err := st.Import(ctx, data, now.Add(time.Minute), false); err != nil {
 		t.Fatalf("legacy relative path was not adopted: %v", err)
 	}
 	data.SourcePath = "/another-source/chat.db"
+	before = archiveContents(t, st)
 	err = st.Import(ctx, data, now.Add(2*time.Minute), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("adopted source identity was not enforced: %v", err)
 	}
-}
-
-func TestMergeRejectsExistingDuplicateHandleIdentity(t *testing.T) {
-	ctx := context.Background()
-	st := openTestArchive(t, ctx)
-	defer func() { _ = st.Close() }()
-	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
-	data := fixtureArchiveData()
-	if err := st.Import(ctx, data, now, false); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := st.store.DB().Exec(`insert into handles(source_rowid, handle, service) values(99, ?, ?)`, data.Handles[0].ID, data.Handles[0].Service); err != nil {
-		t.Fatal(err)
-	}
-	err := st.Import(ctx, data, now.Add(time.Minute), false)
-	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
-		t.Fatalf("duplicate handle merge error = %v", err)
-	}
+	assertArchiveUnchanged(t, st, before)
 }
 
 func TestMergeRejectsDifferentSourceDatabase(t *testing.T) {
@@ -129,10 +115,12 @@ func TestMergeRejectsDifferentSourceDatabase(t *testing.T) {
 	}
 	incoming := fixtureArchiveData()
 	incoming.SourcePath = "/private/other/chat.db"
+	before := archiveContents(t, st)
 	err := st.Import(ctx, incoming, now.Add(time.Minute), false)
 	if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 		t.Fatalf("source lineage error = %v", err)
 	}
+	assertArchiveUnchanged(t, st, before)
 	if err := st.Import(ctx, incoming, now.Add(2*time.Minute), true); err != nil {
 		t.Fatal(err)
 	}
@@ -155,16 +143,15 @@ func TestRestoreRejectsDuplicateIncomingGUIDsWithoutChangingArchive(t *testing.T
 	}
 	incoming := fixtureArchiveData()
 	incoming.Messages[1].GUID = incoming.Messages[0].GUID
+	before := archiveContents(t, st)
 	err := st.Import(ctx, incoming, now.Add(time.Minute), true)
 	if err == nil || !strings.Contains(err.Error(), "appears at rowids") {
 		t.Fatalf("duplicate restore error = %v", err)
 	}
-	if got := scalar(t, st.store.DB(), `select count(*) from messages`); got != 2 {
-		t.Fatalf("failed restore changed archive: %d", got)
-	}
+	assertArchiveUnchanged(t, st, before)
 }
 
-func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
+func TestMergeRejectsExistingDuplicateIdentity(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	tests := []struct {
@@ -173,6 +160,8 @@ func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
 	}{
 		{name: "message", insert: `insert into messages(source_rowid, guid) values(99, 'message-one')`},
 		{name: "chat", insert: `insert into chats(source_rowid, guid) values(99, 'chat-one')`},
+		{name: "handle", insert: `insert into handles(source_rowid, handle, service)
+select 99, handle, service from handles where source_rowid = 1`},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -185,10 +174,12 @@ func TestMergeRejectsExistingDuplicateGUID(t *testing.T) {
 			if _, err := st.store.DB().Exec(test.insert); err != nil {
 				t.Fatal(err)
 			}
+			before := archiveContents(t, st)
 			err := st.Import(ctx, data, now.Add(time.Minute), false)
 			if err == nil || !strings.Contains(err.Error(), "sync --restore") {
 				t.Fatalf("duplicate %s merge error = %v", test.name, err)
 			}
+			assertArchiveUnchanged(t, st, before)
 		})
 	}
 }
@@ -228,4 +219,47 @@ func TestBlankGUIDEventsUseRowIDFallback(t *testing.T) {
 	}
 	assertTombstone(t, st.store.DB(), "messages", "source_rowid", int64(1), deletionSourceUnsent)
 	assertActive(t, st.store.DB(), "messages", "source_rowid", int64(2))
+}
+
+// Compare logical rows: SQLite/WAL file bytes can change without data changes.
+func archiveContents(t *testing.T, st *Store) string {
+	t.Helper()
+	var contents strings.Builder
+	for _, table := range []string{
+		"handles", "chats", "chat_participants", "chat_messages",
+		"messages", "message_events", "messages_fts", "sync_state",
+	} {
+		rows, err := st.store.DB().Query("select * from " + table + " order by 1, 2")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		columns, err := rows.Columns()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintln(&contents, table, columns)
+		values := make([]any, len(columns))
+		targets := make([]any, len(columns))
+		for i := range values {
+			targets[i] = &values[i]
+		}
+		for rows.Next() {
+			if err := rows.Scan(targets...); err != nil {
+				t.Fatal(err)
+			}
+			fmt.Fprintf(&contents, "%#v\n", values)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return contents.String()
+}
+
+func assertArchiveUnchanged(t *testing.T, st *Store, before string) {
+	t.Helper()
+	if after := archiveContents(t, st); after != before {
+		t.Fatalf("rejected import changed archive:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
 }
