@@ -75,3 +75,17 @@ artifacts changed.
   production source is restored byte-for-byte.
 - Require full module race tests, static checks, built-CLI synthetic smoke,
   independent review and platform CI. No live Messages data or releases.
+
+## CLI list-limit fixtures
+
+- Remove the populated Messages fixture and sync from six argument-error checks.
+  Require each intended usage error against missing temporary source/archive
+  paths, preserving the conflicting-flags and zero-limit cases.
+- Replace the two non-binding `--all` assertions with one minimal source fixture:
+  51 chats and 21 messages. Check default truncation and complete unlimited output
+  for chats, messages and search, including counts, limit and completion fields.
+- Eight before/after CLI race suites retain both validation-guard checks. Ignoring
+  `--all` passes the old entire CLI suite and fails all three repaired command
+  cases. Healthy suites pass; production source is restored byte-for-byte.
+- Require full module/static checks, built-CLI synthetic smoke, independent review
+  and platform CI. Temporary synthetic data only; no production changes or releases.

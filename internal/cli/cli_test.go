@@ -214,47 +214,6 @@ func TestArchiveCommandsSyncReadAndSearch(t *testing.T) {
 	}
 }
 
-func TestLimitFlagsAreExplicit(t *testing.T) {
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "chat.db")
-	archivePath := filepath.Join(dir, "archive.db")
-	createMessagesFixture(t, dbPath)
-	_ = runOK(t, "--db", dbPath, "--archive", archivePath, "--json", "sync")
-
-	for _, args := range [][]string{
-		{"--archive", archivePath, "chats", "--all", "--limit", "2"},
-		{"--archive", archivePath, "chats", "--limit", "0"},
-		{"--archive", archivePath, "messages", "--chat", "1", "--all", "--limit", "2"},
-		{"--archive", archivePath, "search", "--all", "--limit", "2", "launch"},
-		{"--archive", archivePath, "messages", "--chat", "1", "--limit", "0"},
-		{"--archive", archivePath, "search", "--limit", "0", "launch"},
-	} {
-		var stdout, stderr bytes.Buffer
-		err := Run(context.Background(), args, &stdout, &stderr)
-		if err == nil || ExitCode(err) != 2 {
-			t.Fatalf("Run(%v) expected usage error, got err=%v stdout=%s stderr=%s", args, err, stdout.String(), stderr.String())
-		}
-	}
-
-	allMessagesOut := runOK(t, "--archive", archivePath, "--json", "messages", "--chat", "2", "--all")
-	var allMessages messageListJSON
-	if err := json.Unmarshal([]byte(allMessagesOut), &allMessages); err != nil {
-		t.Fatalf("all messages json = %s err=%v", allMessagesOut, err)
-	}
-	if allMessages.Returned != 2 || allMessages.Total != 2 || !allMessages.Complete || len(allMessages.Items) != 2 {
-		t.Fatalf("all messages = %#v", allMessages)
-	}
-
-	allSearchOut := runOK(t, "--archive", archivePath, "--json", "search", "--all", "launch")
-	var allSearch searchListJSON
-	if err := json.Unmarshal([]byte(allSearchOut), &allSearch); err != nil {
-		t.Fatalf("all search json = %s err=%v", allSearchOut, err)
-	}
-	if allSearch.Returned != 2 || allSearch.Total != 2 || !allSearch.Complete || len(allSearch.Items) != 2 {
-		t.Fatalf("all search = %#v", allSearch)
-	}
-}
-
 func TestArchiveCommandsRequireSync(t *testing.T) {
 	for _, args := range [][]string{
 		{"--json", "chats"},
