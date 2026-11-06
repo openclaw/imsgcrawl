@@ -102,3 +102,17 @@ artifacts changed.
   message-sender wrapping. Healthy suites pass; both production files are restored.
 - Require full module/static checks, built-CLI synthetic smoke, independent review
   and platform CI. No production changes, live Messages data or releases.
+
+## Contacts help dispatch
+
+- Remove the unreachable export-level help guard. Its only caller checks the
+  same help-before-terminator condition before dispatching the export suffix.
+  Keep the parent guard and existing public help output.
+- Fold four nonempty-output help checks into the command-help table, preserving
+  every input while requiring the appropriate command description. This removes
+  thirteen test lines and three production lines without dropping a case.
+- Six before/after full-CLI race suites retain parent-help failure detection and
+  now reject unrelated nonempty replies for all four cases. A separate poisoned
+  child-guard probe passes the original suite, alongside the sole-caller proof.
+- Require full module/static checks, built-CLI synthetic smoke, independent review
+  and platform CI. Temporary synthetic data only; no live Messages data or releases.

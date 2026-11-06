@@ -26,9 +26,6 @@ func (r *runtime) runContacts(args []string) error {
 }
 
 func (r *runtime) runContactsExport(args []string) error {
-	if hasHelpFlag(args) {
-		return printCommandUsage(r.stdout, []string{"contacts", "export"})
-	}
 	fs := flag.NewFlagSet("imsgcrawl contacts export", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {

@@ -28,6 +28,10 @@ func TestHelpIsCligDevShaped(t *testing.T) {
 		{"contacts help", []string{"contacts", "--help"}, "contacts export"},
 		{"contacts export help", []string{"contacts", "export", "--help"}, "--json"},
 		{"json contacts export help", []string{"--json", "contacts", "export", "--help"}, "--json"},
+		{"chats help with invalid limit", []string{"chats", "--limit", "-1", "--help"}, "List archived chats."},
+		{"messages help with invalid arguments", []string{"messages", "--chat", "", "--limit", "0", "--help"}, "List archived messages for one chat."},
+		{"search help with invalid limit", []string{"search", "--limit", "0", "--help"}, "Search archived message text."},
+		{"contacts export help with unexpected argument", []string{"contacts", "export", "unexpected", "--help"}, "Export phone contacts from the Messages source database."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
@@ -38,23 +42,6 @@ func TestHelpIsCligDevShaped(t *testing.T) {
 				t.Fatalf("stdout missing %q:\n%s", tc.want, stdout.String())
 			}
 		})
-	}
-}
-
-func TestHelpIgnoresOtherCommandArguments(t *testing.T) {
-	for _, args := range [][]string{
-		{"chats", "--limit", "-1", "--help"},
-		{"messages", "--chat", "", "--limit", "0", "--help"},
-		{"search", "--limit", "0", "--help"},
-		{"contacts", "export", "unexpected", "--help"},
-	} {
-		var stdout, stderr bytes.Buffer
-		if err := Run(context.Background(), args, &stdout, &stderr); err != nil {
-			t.Fatalf("Run(%v) error = %v stderr=%s", args, err, stderr.String())
-		}
-		if stdout.Len() == 0 {
-			t.Fatalf("Run(%v) printed no help", args)
-		}
 	}
 }
 
