@@ -1,188 +1,70 @@
 # Test cleanup ledger
 
-## CLI contract tests
+This records the imsgcrawl portion of the crawl-app test cleanup campaign.
+Land narrow PRs; no releases. Other repositories keep their own audit evidence.
 
-- Removed `TestRunEndToEnd`: it called `Run` in process, created a Messages
-  database for help/version/metadata, and repeated shallow substring checks.
-- Kept no-command help and version checks without a database fixture.
-- Moved both JSON flag positions into the full metadata and contact-export
-  contract tests. Contact export now checks row count as well as normalized
-  values, so duplicate rows cannot disappear into the assertion map.
-- Kept source message counts in the existing archive-state status test.
-- Retained `scripts/smoke-cli.py` as the built-binary integration check. It uses
-  temporary synthetic Messages data and verifies the source bytes stay unchanged.
+## Bounded coverage
 
-This is a bounded CLI-test cleanup, not a complete repository audit.
-No production behavior or release artifacts changed.
+Read all 31 tracked Go test files, both Python test files and the built-CLI smoke.
+The only fixture-named file is the shared CLI fixture; no tracked testdata directory
+exists. Keep synthetic Messages databases and archives in temporary directories.
+This bounded read is complete; it does not certify every product or macOS path.
 
-## Sync-lock test waits
+## Landed changes
 
-- Retained the real file-lock contention, import serialization, extraction-error
-  release, and dangling-symlink coverage. These tests use temporary archives.
-- Bounded the first sync and its extraction/import channel waits in the two
-  serialization tests. An early sync failure now reports the returned error; a
-  stalled phase reports its name instead of hanging until the suite timeout.
-- Made the paused synthetic extractors observe cancellation, so a failed test
-  can release its own lock. The separate 100 ms competing-sync deadlines remain.
+Each linked PR owns its exact diff, fault probes, review and validation evidence.
 
-Validation: race-enabled archive tests, full module tests and vet, built-CLI
-synthetic smoke, and CI. No production code, live Messages data, or release
-artifacts changed.
+| PR | Area | Result |
+| --- | --- | --- |
+| [48](https://github.com/openclaw/imsgcrawl/pull/48) | CLI | Remove the in-process “end-to-end” fixture; retain help/version and full JSON/contact contracts. |
+| [49](https://github.com/openclaw/imsgcrawl/pull/49) | Sync locks | Bound phase waits and make paused synthetic extractors observe cancellation. |
+| [53](https://github.com/openclaw/imsgcrawl/pull/53) | Snapshot cancellation | Use a valid WAL source and require context cancellation instead of any corruption error. |
+| [54](https://github.com/openclaw/imsgcrawl/pull/54) | Built-CLI smoke | Close all five synthetic SQLite connections after committing. |
+| [55](https://github.com/openclaw/imsgcrawl/pull/55) | Attributed bodies | Remove duplicate round trips; retain fuzz seeds, length boundaries and independent Foundation bytes. |
+| [56](https://github.com/openclaw/imsgcrawl/pull/56) | Extraction | Share three current-text fixtures while retaining revision and malformed-summary cases. |
+| [57](https://github.com/openclaw/imsgcrawl/pull/57) | List limits | Remove database setup for usage errors; make unlimited lists exceed default limits. |
+| [58](https://github.com/openclaw/imsgcrawl/pull/58) | Text tables | Require complete wrapped content and exact padding output. |
+| [59](https://github.com/openclaw/imsgcrawl/pull/59) | Contacts help | Remove the unreachable child guard; share help cases with command-specific assertions. |
+| [60](https://github.com/openclaw/imsgcrawl/pull/60) | Migration | Check complete legacy message/event contents and defaults. |
+| [62](https://github.com/openclaw/imsgcrawl/pull/62) | Import rejection | Share duplicate-identity setup and compare every archive data table after rejection. |
+| [63](https://github.com/openclaw/imsgcrawl/pull/63) | Chat lists | Share three list commands and require full envelopes, metadata and ordered participants. |
+| [64](https://github.com/openclaw/imsgcrawl/pull/64) | File-copy refusals | Run collision/cancellation cases on every platform; require causes and file preservation. |
+| [66](https://github.com/openclaw/imsgcrawl/pull/66) | Scan evaluator | Use loaded roots and cover direct/dependency errors and incomplete package graphs. |
 
-## Snapshot cancellation fixture
+## Closeout cleanup
 
-- Removed the cancellation check against an already-corrupt SQLite file: any
-  corruption error satisfied it, even when the snapshot wrapper ignored context.
-- Reuse the valid WAL snapshot fixture and require `context.Canceled`. Keep the
-  committed-row, source-byte preservation, corruption, and owned-directory cleanup
-  checks. Close any unexpectedly successful cancellation result before failing.
-- A temporary production overlay that discards the caller's context passes the
-  original snapshot tests and fails the repaired cancellation assertion. Normal
-  race tests, static checks, built-CLI synthetic smoke, and CI validate the change.
+Share the undecodable-edit and unreconstructable-partial-unsend archive fixtures
+in one two-row table. Keep both plist inputs, initial and incoming text, separate
+temporary archives, unavailable-text checks, partial-unsend state, cleared stored
+text and existing search assertions. Also check the old “keep” term for partial
+unsend. Test code is 17 net lines smaller; production remains unchanged.
 
-## Smoke fixture database cleanup
+Eight paired race-enabled archive suites preserve healthy behavior and detection
+of incorrect clearing, restored old text and stale search indexes. Fault overlays
+are temporary; inspect the PR evidence for the completed validation results.
 
-- Close all five synthetic source connections after their transaction commits.
-  Preserve every fixture value, CLI call and assertion.
-- The original built-CLI smoke passes while all five observed Python connections
-  remain usable. The same smoke now passes with all five connections closed.
-- Validate before/after against one temporary CLI binary, transcript privacy tests,
-  race-enabled module tests, static checks, independent review and platform CI.
-  No live Messages database or release artifact is used.
+## Retained contracts
 
-## Attributed-body round-trip coverage
+- Foundation-generated bytes, UTF-8/UTF-16 rejection, fuzz length boundaries,
+  source extraction and archive revision hydration cover different layers.
+- Merge/restore, identity remapping, tombstones, event history, migrations and
+  rejected-import preservation retain distinct state transitions.
+- Source/archive aliases, SQLite path spellings, sidecars, generation changes and
+  cross-process sync locks protect separate ownership boundaries.
+- WAL committed-frame visibility, rollback-journal recovery, copy digests,
+  cancellation and native Darwin clone independence remain separate.
+- CLI text/JSON, contacts shape, literal flags, list limits, wrapping and terminal
+  escaping differ. Built-binary synthetic smoke is distinct from in-process tests.
+- Transcript privacy uses a stub executable; structured scan tests use synthetic
+  metadata. Neither is a deployed service or real Messages integration test.
 
-- Remove the separate three-case `TestDecodeAttributedBody` table. Its short,
-  ordinary and 300-byte bodies repeat the round-trip assertion already exercised
-  by `FuzzDecodeAttributedBodyRoundTrip` during ordinary `go test` runs.
-- Keep every fuzz seed, including leading NULs, Unicode and the 127/128,
-  255/256 and 65,535/65,536-byte length boundaries. Preserve the independent
-  Foundation-generated fixture, malformed input and overflow checks.
-- Compare healthy runs and decoder-fault overlays before/after removal; require
-  the retained seed corpus to reject the same short and extended-length faults.
-  Validate full module race tests, static checks, built-CLI synthetic smoke,
-  independent review and platform CI. No production behavior or release changes.
+## Verification and limits
 
-## Current-message extraction fixtures
+Require workspace-disabled tidy with unchanged module files, vet, uncached race
+tests, built-CLI synthetic smoke, Python evaluator/privacy tests and independent
+P0–P3 review. Exact-head macOS/Linux CI also checks formatting, dead code, builds
+and vulnerability scans. Linked PRs record the actual scope and results.
 
-- Fold three current-text extraction tests into one table, removing nineteen
-  test lines. Preserve each input, schema, isolated SQLite database, current-body
-  assertion and malformed-summary fallback check.
-- Keep revision metadata, legacy-column availability and malformed-body extraction
-  tests separate. They exercise different source shapes and failure paths.
-- Eight before/after race suites retain detection of a lost current-body flag,
-  exposed known-edit fallback and corrupted decoded text. Healthy suites pass;
-  production source is restored byte-for-byte.
-- Require full module race tests, static checks, built-CLI synthetic smoke,
-  independent review and platform CI. No live Messages data or releases.
-
-## CLI list-limit fixtures
-
-- Remove the populated Messages fixture and sync from six argument-error checks.
-  Require each intended usage error against missing temporary source/archive
-  paths, preserving the conflicting-flags and zero-limit cases.
-- Replace the two non-binding `--all` assertions with one minimal source fixture:
-  51 chats and 21 messages. Check default truncation and complete unlimited output
-  for chats, messages and search, including counts, limit and completion fields.
-- Eight before/after CLI race suites retain both validation-guard checks. Ignoring
-  `--all` passes the old entire CLI suite and fails all three repaired command
-  cases. Healthy suites pass; production source is restored byte-for-byte.
-- Require full module/static checks, built-CLI synthetic smoke, independent review
-  and platform CI. Temporary synthetic data only; no production changes or releases.
-
-## Text-table content assertions
-
-- Replace two ellipsis-only wrapping checks with one table that requires the
-  complete rendered headers, sender, search context and message text. Use
-  reserved-domain synthetic identities long enough to wrap in both layouts.
-- Require the exact small padding fixture output so header-only output cannot
-  satisfy its old negative assertion. Keep continuation-line spacing unchanged.
-- Twelve before/after race suites retain trailing-padding detection and now
-  reject header-only output, lost senders, lost search context and disabled
-  message-sender wrapping. Healthy suites pass; both production files are restored.
-- Require full module/static checks, built-CLI synthetic smoke, independent review
-  and platform CI. No production changes, live Messages data or releases.
-
-## Contacts help dispatch
-
-- Remove the unreachable export-level help guard. Its only caller checks the
-  same help-before-terminator condition before dispatching the export suffix.
-  Keep the parent guard and existing public help output.
-- Fold four nonempty-output help checks into the command-help table, preserving
-  every input while requiring the appropriate command description. This removes
-  thirteen test lines and three production lines without dropping a case.
-- Six before/after full-CLI race suites retain parent-help failure detection and
-  now reject unrelated nonempty replies for all four cases. A separate poisoned
-  child-guard probe passes the original suite, alongside the sole-caller proof.
-- Require full module/static checks, built-CLI synthetic smoke, independent review
-  and platform CI. Temporary synthetic data only; no live Messages data or releases.
-
-## Legacy migration contents
-
-- Move the version-one migration test out of the broad store test file. Keep
-  every schema-column check and the original NULL/default legacy row; add one
-  populated row to exercise handle, service, direction and attachment metadata.
-- Replace the single GUID-filtered event count with complete message/event
-  counts and per-row content, revision/default and deletion-state assertions.
-  Decode event JSON before comparison so key ordering is not part of the test.
-- Ten before/after full-archive race suites: healthy suites pass, wrong event
-  identity remains detected, and the repaired test additionally rejects corrupted
-  event text, discarded event metadata and overwritten stored message text.
-- All temporary migration faults are restored byte-for-byte. Require full module
-  checks, built-CLI synthetic smoke, independent review and macOS/Linux CI.
-  Synthetic temporary databases only; no production behavior changes or releases.
-
-## Rejected-import archive preservation
-
-- Fold the standalone duplicate-handle test into the existing message/chat
-  duplicate-identity table. Preserve its inserted values, import and error check,
-  removing eighteen lines of repeated setup.
-- Compare all logical rows and columns in the eight archive data tables before
-  and after every tested identity/source rejection, including legacy lineage
-  adoption and failed restore. Preserve successful restore/adoption checks.
-- Ten before/after full-archive race comparison suites: healthy suites pass and
-  swallowed rejection errors remain detected. The repaired assertions additionally
-  reject message-text damage, lost related rows, and erased events/FTS/sync state
-  that the original suite accepted.
-- Restore temporary production faults byte-for-byte; require full module checks,
-  built-CLI synthetic smoke, independent review and macOS/Linux CI.
-  Synthetic temporary databases only; no production behavior changes or releases.
-
-## Complete chat-list records
-
-- Consolidate the existing default, two-row and explicit four-row JSON chat-list
-  commands into one table. Preserve all three inputs and the synced fixture.
-- Compare the full envelopes and all eleven chat fields, including ordered
-  participant handles and the newest-first rowid tie-break. Remove the now-unused
-  ten-line membership helper; the three test files are five lines shorter.
-- Ten before/after full-CLI race suites retain message-count failure detection.
-  The repaired cases additionally reject fabricated metadata, swapped newest
-  chats and missing extra participant handles that the original suite accepted.
-- Restore temporary production faults byte-for-byte; require full module checks,
-  built-CLI synthetic smoke, independent review and macOS/Linux CI.
-  Synthetic temporary data only; no production behavior changes or releases.
-
-## Portable copy refusals
-
-- Move the existing-destination case out of the Darwin-only clone test into
-  the portable copy-refusal table. Keep native replaced-source clone coverage.
-- Preserve cancellation and existing-file inputs; require their specific error
-  causes, unchanged source/destination contents and metadata, and no output after
-  cancellation. Compare captured metadata without assuming POSIX permissions.
-- Ten before/after native snapshot race comparison suites retain overwrite and
-  cancellation detection and now reject unrelated collision errors and source
-  damage. All temporary production faults are restored byte-for-byte.
-- Linux test discovery now includes the refusal table. Require native macOS/Linux
-  CI, full module checks, built-CLI smoke and independent review.
-  Temporary synthetic files only; no production changes or releases.
-
-## Complete package-load rejection fixtures
-
-- Replace the malformed error-only package fixture with a real loaded root
-  carrying its direct error; cover dependency errors and incomplete graphs too.
-- Keep loaded-versus-selected dependency checks, empty roots and version mismatch.
-- Eight before/after evaluator-suite runs: healthy inputs pass, direct-error
-  detection remains, and two previously missed guard regressions now fail.
-  Faults exist only in memory; production bytes remain unchanged.
-- Require evaluator/privacy tests, independent review and macOS/Linux CI.
-  Synthetic package metadata only; no product changes or releases.
+No live Messages database, personal conversations, release artifacts or deployments
+are part of this audit. Synthetic CLI integration is not installed-app or live-data
+end-to-end proof.
