@@ -4,8 +4,12 @@ import "encoding/json"
 
 type chatJSONItem struct {
 	ChatID             string   `json:"chat_id"`
+	GUID               string   `json:"guid"`
 	Title              string   `json:"title"`
 	Kind               string   `json:"kind"`
+	ChatIdentifier     string   `json:"chat_identifier"`
+	RoomName           string   `json:"room_name"`
+	Service            string   `json:"service"`
 	ParticipantCount   int64    `json:"participant_count"`
 	ParticipantHandles []string `json:"participant_handles"`
 	MessageCount       int64    `json:"message_count"`
