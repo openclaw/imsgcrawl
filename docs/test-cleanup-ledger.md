@@ -89,3 +89,16 @@ artifacts changed.
   cases. Healthy suites pass; production source is restored byte-for-byte.
 - Require full module/static checks, built-CLI synthetic smoke, independent review
   and platform CI. Temporary synthetic data only; no production changes or releases.
+
+## Text-table content assertions
+
+- Replace two ellipsis-only wrapping checks with one table that requires the
+  complete rendered headers, sender, search context and message text. Use
+  reserved-domain synthetic identities long enough to wrap in both layouts.
+- Require the exact small padding fixture output so header-only output cannot
+  satisfy its old negative assertion. Keep continuation-line spacing unchanged.
+- Twelve before/after race suites retain trailing-padding detection and now
+  reject header-only output, lost senders, lost search context and disabled
+  message-sender wrapping. Healthy suites pass; both production files are restored.
+- Require full module/static checks, built-CLI synthetic smoke, independent review
+  and platform CI. No production changes, live Messages data or releases.
