@@ -131,3 +131,19 @@ artifacts changed.
 - All temporary migration faults are restored byte-for-byte. Require full module
   checks, built-CLI synthetic smoke, independent review and macOS/Linux CI.
   Synthetic temporary databases only; no production behavior changes or releases.
+
+## Rejected-import archive preservation
+
+- Fold the standalone duplicate-handle test into the existing message/chat
+  duplicate-identity table. Preserve its inserted values, import and error check,
+  removing eighteen lines of repeated setup.
+- Compare all logical rows and columns in the eight archive data tables before
+  and after every tested identity/source rejection, including legacy lineage
+  adoption and failed restore. Preserve successful restore/adoption checks.
+- Ten before/after full-archive race comparison suites: healthy suites pass and
+  swallowed rejection errors remain detected. The repaired assertions additionally
+  reject message-text damage, lost related rows, and erased events/FTS/sync state
+  that the original suite accepted.
+- Restore temporary production faults byte-for-byte; require full module checks,
+  built-CLI synthetic smoke, independent review and macOS/Linux CI.
+  Synthetic temporary databases only; no production behavior changes or releases.
