@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build all packages and the smoke-test CLI in one CI invocation, avoiding a second build with different path-trimming flags.
+
 ## 0.3.3 - 2026-11-06
 
 **Highlights:** Preserve literal SQLite paths when opening archives and checking freshness.

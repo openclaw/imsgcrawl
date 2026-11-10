@@ -77,9 +77,8 @@ jobs:
 
       - name: Build
         run: |
-          go build ./...
           mkdir -p bin
-          go build -trimpath -o bin/imsgcrawl ./cmd/imsgcrawl
+          go build -trimpath -o bin/ ./...
 
       - name: Built CLI smoke with synthetic Messages data
         run: python3 scripts/smoke-cli.py bin/imsgcrawl
