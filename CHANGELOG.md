@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Security: use Go 1.27.4 for source builds, CI, advisory scans, and releases to address GO-2026-6859, retaining the Go 1.27.0 source minimum.
+
 - Build all packages and the smoke-test CLI in one CI invocation, avoiding a second build with different path-trimming flags.
 
 ## 0.3.3 - 2026-11-06
