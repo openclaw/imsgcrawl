@@ -36,6 +36,11 @@ func createMessagesFixture(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
 	schema := []string{
 		`create table handle (ROWID integer primary key, id text not null, service text not null, uncanonicalized_id text)`,
 		`create table chat (ROWID integer primary key, guid text not null, display_name text, chat_identifier text, service_name text, room_name text, is_archived integer)`,
@@ -47,7 +52,7 @@ func createMessagesFixture(t *testing.T, path string) {
 		`create table sync_deleted_chats (guid text)`,
 	}
 	for _, stmt := range schema {
-		if _, err := db.Exec(stmt); err != nil {
+		if _, err := tx.Exec(stmt); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -80,14 +85,17 @@ func createMessagesFixture(t *testing.T, path string) {
 		`insert into message_attachment_join(message_id, attachment_id) values (4, 42)`,
 	}
 	for _, stmt := range inserts {
-		if _, err := db.Exec(stmt); err != nil {
+		if _, err := tx.Exec(stmt); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := db.Exec(`update message set attributedBody = ? where rowid = 2`, makeFixtureAttributedBody("earlier launch note")); err != nil {
+	if _, err := tx.Exec(`update message set attributedBody = ? where rowid = 2`, makeFixtureAttributedBody("earlier launch note")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`update message set text = ? where rowid = 3`, longLaunchNote); err != nil {
+	if _, err := tx.Exec(`update message set text = ? where rowid = 3`, longLaunchNote); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 }
