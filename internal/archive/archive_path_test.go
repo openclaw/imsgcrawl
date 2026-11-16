@@ -161,7 +161,15 @@ func createWhitespaceMessagesFixture(t *testing.T, path, journal string) *sql.DB
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	_, err = db.Exec("pragma journal_mode=" + journal + `;
+	if _, err := db.Exec("pragma journal_mode=" + journal); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.Exec(`
 create table handle(id text, service text, uncanonicalized_id text);
 create table chat(guid text, chat_identifier text, service_name text, display_name text, room_name text, is_archived integer);
 create table chat_handle_join(chat_id integer, handle_id integer);
@@ -170,6 +178,9 @@ create table message_attachment_join(message_id integer, attachment_id integer);
 create table message(guid text, handle_id integer, date integer, service text, is_from_me integer, text text, attributedBody blob);
 insert into message values('synthetic-source-message', 0, 1, 'iMessage', 0, 'synthetic text', x'');`)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(path, 0o644); err != nil {
